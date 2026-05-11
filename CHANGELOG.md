@@ -6,7 +6,215 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
-## [1.0.120] - 2026-03-16
+## [2.0.99] - 2026-05-11
+
+### Added
+
+- **Embedded ACT diff for Git revisions** — right-click a local `.xml` SimaticML file or `.s7dcl` SD block and choose **TIA Import: Compare with Git Revision in ACT** to pick two revisions from the working tree / recent Git history and open a graphical Automation Compare Tool diff directly inside VS Code. The compare view uses the same embedded ACT webview as the single-file preview and passes both files to the installed ACT renderer as `leftFile` / `rightFile` globals.
+
+### Changed
+
+- **Safer ACT compare fallback** — revision files are materialized under `%TEMP%/tia-act-compare/` with ACT-friendly names, `.s7dcl` comparisons resolve through committed `.tiaPreview/*.xml` mirrors, and external ACT launch remains available only as fallback / `embedMode=external`. The external process path now strips VS Code Electron environment variables so ACT does not start in Node mode.
+
+---
+
+## [2.0.88] - 2026-05-11
+
+### Added
+
+- **Stale preview detection for `.s7dcl` LAD/FBD preview** — opening `TIA Import: Preview XML with Automation Compare Tool` for an `.s7dcl` file now validates whether the cached XML mirror is older than the source SD files (`.s7dcl` / `.s7res`). When staleness is detected, the preview is blocked by default to avoid showing outdated logic and a modal warning explains that the block should be re-exported from TIA Portal.
+
+### Changed
+
+- **Safe fallback flow for stale mirrors** — users can still explicitly continue via **Open Stale XML Anyway**, while **Show Logs** jumps directly to the extension output channel with contextual staleness details (source path and timestamps).
+
+---
+
+## [2.0.70] - 2026-05-08
+
+### Added
+
+- **Graphical LAD / FBD viewer for local SimaticML XML** — program blocks exported from TIA Portal can now be displayed as **interactive LAD or FBD network diagrams** directly inside VS Code, without launching TIA Portal. Right-click a `.xml` block in the Explorer and choose **TIA Import: Preview XML with Automation Compare Tool**: every network is rendered with the same layout TIA Portal uses (instructions, contacts/coils for LAD, function boxes for FBD, wire routing, operand wiring), so block logic can be reviewed and reasoned about offline by humans and AI agents alike. The renderer is the installed SIMATIC Automation Compare Tool, embedded into a VS Code webview panel.
+- **Dark-theme support for the embedded SIMATIC Automation Compare Tool preview** — the in-VS-Code ACT preview panel now follows the active VS Code color theme. All ACT surfaces (Overview sidebar, Interface / Attributes tables, Options pane, tabs, splitters) are repainted with `--vscode-*` colors and the LAD/FBD diagram canvas, block bodies, wires and SVG operand text are inverted into a dark palette so block contours and labels stay readable on the dark background.
+- **Full operand label expansion in LAD/FBD networks** — ACT renders truncated operand names like `#ManMs…gToRun`, but keeps the full name in a child SVG `<title>` element. The webview now walks the rendered SVG (with a `MutationObserver` to cover lazy-rendered networks) and replaces each truncated `<tspan>` text with the full name, so `#ManMsgL1ToL2.oCountMsgToRun` is shown verbatim. Long input labels that previously got clipped on the left are now displayed fully — the diagram is shifted right with a left margin and parents have `overflow: visible`, with horizontal scroll on the outer split-area as a fallback when the network is wider than the panel.
+
+### Changed
+
+- **Prerequisite emphasised in README** — the *Previewing local SimaticML XML* section and the *Requirements* table now link directly to the Siemens Support download page for the [SIMATIC Automation Compare Tool](https://support.industry.siemens.com/cs/document/109797235/simatic-automation-compare-tool-?dti=0&lc=en-PL). The extension does not bundle ACT; you must install it separately to use the preview.
+
+---
+
+## [2.0.0] - 2026-05-06
+
+Major version bump consolidating the autonomous-agent feature wave.
+
+### Added
+
+- **TIA Portal V18 support** — V18 is now selectable in the TIA Portal version picker (Connection panel and `tiaImport.tiaPortalVersion` setting). The .NET wrapper is built against V18/V19/V20/V21 references and the cross-reference dump (which requires V18+) works on every supported version.
+- **`tia_export_cross_references` Language Model tool** — dump the full cross-reference table for a PLC into AI-friendly files. Writes:
+  - `cross-references.jsonl` — one JSON record per usage location, streamable for LLM context windows. Fields: `symbol`, `symbolType`, `symbolPath`, `symbolAddress`, `usedIn`, `usedInPath`, `usedInType`, `usedInDevice`, `usedInAddress`, `access`, `referenceLocation`, `referenceType`, `referencedAsName`, `locationName`, `locationAddress`.
+  - `cross-references.csv` — flat RFC 4180 CSV with the same columns, deterministic sort, ready to load into pandas / Excel / `Import-Csv`.
+  - `unused-symbols.csv` — objects with no references (dead-code detection).
+  - Defaults to `<workspace>/TiaExport/Projects/<ProjectName>/Devices/PLCs/<Device>/CrossReferences/`.
+  - Uses `Siemens.Engineering.CrossReference.CrossReferenceService` (requires TIA Portal V18+).
+- **Setting `tiaImport.autoExportCrossReferences`** (`always` / `ask` / `never`, default `ask`) — controls automatic cross-reference dump after a device or project import. In `ask` mode the prompt is shown **per PLC** at the moment the dump would start, never during plain block imports, and **auto-skips after 5 s** if you don't respond so the rest of the import can run unattended. ⚠️ Generating cross-references is performed by TIA Portal itself and can take **several minutes — sometimes 10 min+ on large PLCs** (thousands of blocks, fault-tolerant projects); progress is streamed line-by-line into the *TIA Portal Import* output channel.
+- Total LM tool count is now **18** (`tia_*`). The `tia_export_cross_references` tool is also long-running for the same reason — don't impose short client-side timeouts.
+
+### Changed
+
+- README, CHANGELOG and copilot-instructions updated to reflect the 4 supported TIA Portal versions (V18, V19, V20, V21) and the new auto-export setting.
+
+---
+
+## [1.0.223] - 2026-05-06
+
+### Added
+
+- **Multi-agent instruction files in workspace template** — `TIA Import: Prepare Workspace` now scaffolds two extra files alongside `.github/copilot-instructions.md`:
+  - **`CLAUDE.md`** — picked up automatically by [Claude Code](https://docs.anthropic.com/claude/docs/claude-code). Uses Claude's native `@.github/copilot-instructions.md` import syntax to re-export the existing ruleset, so Claude and Copilot share one source of truth.
+  - **`AGENTS.md`** — follows the open [agents.md](https://agents.md) standard supported by Cursor, Aider, OpenAI Codex, Gemini CLI, Jules and other AI coding agents.
+- **`CLAUDE.local.md` is git-ignored** in the template `.gitignore` so per-machine overrides never get committed.
+
+### Changed
+
+- README **Workspace Templates** section documents the new files.
+
+---
+
+## [1.0.221] - 2026-05-06
+
+### Added
+
+- **Full UI ↔ Copilot parity for Language Model Tools** — every workflow available from the UI is now reachable from Copilot / `@tia` chat participant. Three new tools bring the total to **17**:
+  - **`tia_export_project`** — export every device in the active project (program blocks, tag tables, UDTs, watch tables) plus optionally HW configuration in a single call. Equivalent of the UI command **TIA Import: Import Entire Project**. Inputs: `includeHwConfig?` (default `true`), `hwConfigFormat?` (`xml` | `cax`). Returns per-device results with `programOk` / `hwOk` flags.
+  - **`tia_import_hw_config`** — push HW Config from the workspace into TIA Portal. Accepts a single `.xml` / `.aml` file or a folder (`Devices/<Cat>/<Dev>/DeviceConfiguration/` or flat `Devices/IO_Devices/`). **Required** for HW Config — the existing `tia_import_file` does not handle HW Config files because they go through a separate `HwConfigBridgeMixin` endpoint. Honours `tiaImport.hwConfigFormat` and supports `overwriteExisting` / `updateExisting` / `importNetworkConfig` / `skipIfIdentical`. Force-overwrite triggers a confirmation dialog unless `tiaImport.lmTools.autoConfirmImports` is enabled.
+  - **`tia_refresh`** — re-read the project structure from TIA Portal (devices, blocks, tag tables) into the in-memory cache. Use after the user changed something in TIA Portal between tool calls.
+
+### Changed
+
+- **`@tia` chat participant** now advertises all 17 tools (added `tia_export_project`, `tia_import_hw_config`, `tia_refresh` to `TIA_TOOL_NAMES`).
+- **`.github/copilot-instructions.md`** (and the workspace template under `Documentation/Templates/`) updated to document the new tools and clarify that HW Config must be pushed via `tia_import_hw_config`, not `tia_import_file`.
+- **README** gained a *Copilot / AI Agent Integration* subsection summarising the LM tool surface.
+
+---
+
+## [1.0.215] - 2026-05-04
+
+### Added
+
+- **Import Project Library &gt; Types** — three new commands on the Library node in the project tree:
+  - `TIA Import: Import Library Types` — export the entire Project Library Types tree
+  - `TIA Import: Import Library Folder` — export a single user folder (recursive)
+  - `TIA Import: Import Library Type` — export a single library type
+  Files land under `<workspace>/<projectName>/Library/Types/...`, mirroring the in-project folder structure. Master copies are intentionally not exported.
+
+### Changed
+
+- **Per-type format selection for Project Library export** honours the configured `tiaImport.exportFormat`:
+  - LAD/FBD/STL (and their F-variants) → `.s7dcl` / `.s7res` via `LibraryTypeVersion.ExportAsDocuments` (TIA Portal V20+).
+  - SCL → `.scl` via `PlcExternalSourceSystemGroup.GenerateSource` (same path as normal SCL block export).
+  - UDT / GRAPH / CFC / SFC / DB / non-block types → `.xml` via `LibraryTypeVersion.Export` (with an Info message naming the reason).
+- **Format decision is driven by the block's `ProgrammingLanguage`**, not by `LibraryType.GetSupportedExportFormats()` (which is empty for many types and was previously forcing every library type to XML).
+
+### Fixed
+
+- **No more empty per-type subdirectories** when SD export fails — the directory is created on-demand inside the SD branch and rolled back on failure, with automatic XML fallback.
+- **Whitelist of SD-compatible languages** prevents `ExportAsDocuments` failures for SCL / GRAPH / CFC / SFC / DB blocks that were previously routed into the SD path.
+
+---
+
+## [1.0.197] - 2026-04-30
+
+### Added
+
+- **TIA Portal version selector in the Connection panel** — new top-most entry "**TIA Portal**" shows the currently selected major version (V19/V20/V21) and opens a quick-pick to switch versions without diving into Settings. The selection is persisted in `tiaImport.tiaPortalVersion`; the existing change-listener prompts for a window reload to apply it.
+- New command `TIA Import: Select TIA Portal Version` (`tia-import.selectTiaPortalVersion`).
+
+### Changed
+
+- **Wrapper build script skips V17** — `scripts/build-dotnet-all.ps1` now ignores reference assemblies under `dotnet/refs/V17/` (V17 is no longer a supported target). V18 is also out of scope; only V19/V20/V21 are built.
+
+---
+
+## [1.0.172] - 2026-04-30
+
+### Fixed
+
+- **Per-version .NET wrapper binaries** — V19/V20 installations no longer fail to load the extension with `Could not load file or assembly 'Siemens.Engineering.Base, Version=21.0.0.0'`. The wrapper is now built once per supported TIA Portal major version (V19 → `Siemens.Engineering.dll`, V20 → `Siemens.Engineering.dll`, V21 → `Siemens.Engineering.Base.dll` family) and shipped under `dotnet/TiaOpennessWrapper/bin/Release/net48/V<n>/`. The bridge picks the binary matching `tiaImport.tiaPortalVersion` at activation time.
+- **`tiaPortalPath` auto-refresh on version change** — switching the TIA Portal version now automatically clears `tiaImport.tiaPortalPath` if it was pointing at the previous version's default install folder, so the auto-detected path for the newly selected version takes effect after the reload.
+
+### Changed
+
+- **Default TIA Portal version is now V21.**
+- New `scripts/build-dotnet.js` build orchestrator: iterates over V19/V20/V21 and builds each only when the corresponding `C:\Program Files\Siemens\Automation\Portal V<n>\PublicAPI\V<n>\net48` directory is present, skipping missing installations gracefully (Siemens NuGet does not bundle reference assemblies — they are resolved from the local TIA install).
+- `TiaOpennessWrapper.csproj` no longer appends the framework moniker twice to the output path; binaries land directly in `bin\Release\net48\V<n>\`.
+
+### Notes
+
+- This VSIX ships with the V21 wrapper only because V19/V20 binaries can only be produced on machines with TIA Portal V19/V20 installed. To enable V19 or V20, install the corresponding TIA Portal version and run `npm run build:dotnet` before packaging.
+
+---
+
+## [1.0.171] - 2026-04-30
+
+### Added
+
+- **TIA Portal V19 / V20 backward compatibility** — extension now supports TIA Portal V19, V20 and V21 with a single binary. Version is selected via `tiaImport.tiaPortalVersion` (V18 is no longer offered, since SD-format paths require V20+ and V18 lacks several APIs used internally).
+- **`TiaCapabilities` runtime gating** — new helper in the .NET wrapper that exposes the initialized TIA Portal version and feature flags (e.g. `SupportsSdFormat` for V20+). Used to guard newer Openness APIs and degrade gracefully on older versions.
+
+### Changed
+
+- **SD format auto-fallback on V19** — when `exportFormat="sd"` is selected on TIA Portal V19, LAD/FBD/STL blocks are now exported as XML instead of `.s7dcl`/`.s7res` (the `ExportAsDocuments` API was added in V20). SCL blocks continue to use `GenerateSource` (`.scl`) which is available on V19.
+- **SD import blocked with clear error on V19** — exporting `.s7dcl` files back to a V19 project now returns an explicit error message ("SD format requires V20+") instead of failing inside the Openness call.
+- **UI strings de-versioned** — removed hardcoded `V21` from progress titles and command descriptions in the export commands; the active TIA Portal version is shown in the status bar.
+
+### Internal
+
+- `TiaConnector.GetInitializedVersionNumber()` exposed for capability checks.
+- `tsconfig.json` now excludes `test/` from the compilation root so unit tests don't break the production build.
+
+---
+
+## [1.0.164] - 2026-04-27
+
+### Added
+
+- **CAx (AutomationML) format for HW Config** — bidirectional HW configuration transfer between TIA Portal and the workspace using `CaxProvider` (`.aml` files). New TIA→Workspace project- and device-level export and Workspace→TIA `.aml` import paths via the dedicated `HwConfigCaxService`.
+- **`Format HW` toggle in Connection panel** — switch HW Config format between **XML** and **CAx (AutomationML)** with a single click; the choice is persisted in the new `tiaImport.hwConfigFormat` setting and used by all HW import/export commands.
+
+### Changed
+
+- **CAx logs streamed to Output panel** — CAx import/export no longer writes `*_CaxImport.log` / `*_CaxExport.log` files in the workspace. The provider log is captured to a temporary file, emitted line-by-line into the `TIA Portal Import` Output channel, and the temp file is deleted afterwards.
+- **`Import HW Config` (device category)** — now respects the global `Format HW` setting; previously it always produced XML output regardless of the selection.
+
+---
+
+## [1.0.141] - 2026-04-22
+
+### Changed
+
+- **TIA project opening flow** - Improved project opening and loading when connecting to TIA Portal, making the connection flow more reliable.
+- **Block export sorting** - Improved block ordering during export to TIA Portal so dependencies are processed in a more stable sequence.
+
+---
+
+## [1.0.127] - 2026-03-28
+
+### Changed
+
+- **Copilot instructions update** - Refined `.github/copilot-instructions.md` guidance for TIA Portal Openness API usage, including required API XML references, key HW classes, common navigation patterns, block export format rules, and build command reminders.
+
+---
+
+## [1.0.126] - 2026-03-17
+
+### Fixed
+
+- **`UserFiles/` workspace scaffold** — `InitWorkspace` now always creates `UserFiles/` in the workspace root, even when `Documentation/Templates/UserFiles/` is empty and not included in the VSIX package.
+
+---
+
+## [1.0.123] - 2026-03-16
 
 ### Fixed
 

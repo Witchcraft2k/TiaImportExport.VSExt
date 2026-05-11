@@ -2,7 +2,31 @@
 
 ## Project Description
 
-The file `.github/ProjectDescription.md` contains a comprehensive description of the project architecture, communication software structure (L1↔L2), library blocks, protocols, and data flow. **Always** consult this file for context when answering questions about the project.
+The file `.github/ProjectDescription.md` contains a comprehensive description of the project architecture, communication software structure, library blocks, protocols, and data flow. 
+
+The functional description of automation systems should provide the developer with a clear and detailed understanding of what the system is supposed to do and what are the requirements to achieve this. It should also provide guidance on how the system should be designed and implemented to effectively meet these requirements.
+
+
+**Rule:** The project description should include:
+
+1. General description of the system.
+2. Detailed functional requirements for devices controlled by the automation system taking into account the technological division into objects (e.g. pump, valve, measurement) or groups of objects with the full structure of nesting objects, the so-called “plant hierarchy”.
+3. The object description should include:
+   •	a brief description of the operation of the facility,
+   •	operating modes,
+   •	in automatic mode, the algorithm for developing commands controlling an object (if applicable to a single object or a reference to the description of control of a larger group of objects),
+   •	description of interlocks with logic (e.g. for start, operation, opening, closing etc.)
+   •	handling of errors and exceptions,
+   •	control method with HMI
+4. The automatic operation of a group of objects should be described with the same requirements as for individual objects. In addition, the object control algorithm should clearly describe how the system is to be controlled (settings, emergency situations, calculations, performance requirements, control loops etc.)
+5. In case of sequences of activities, the following should be described:
+   •	starting conditions, interruptions of sequences with logic,
+   •	description of sequence steps with the commands for a given step,
+   •	conditions for transitions between steps with logic,
+   •	the sequence should be represented graphically.
+6. Data exchange interfaces between systems
+
+**Always** consult this file for context when answering questions about the project.
 
 **Rule:** When making changes that affect the project structure, architecture, communication logic, block hierarchy, message definitions, or data block layout, **always** update `.github/ProjectDescription.md` to reflect those changes. This includes:
 
@@ -790,3 +814,216 @@ Supervision `Type` values: `Action`, `Interlock`, `Operand`, `Position`, `Reacti
 8. **UDT references**: Always escape quotes in `Datatype` attribute when referencing UDTs: `Datatype="&quot;TypeName&quot;"`.
 9. **Wire connectivity**: Every Part input pin must be connected by a Wire. The first connection in a LAD Wire is typically `<Powerrail />` or an output `<NameCon>`.
 10. **GRAPH sequence integrity**: Every Step must be linked to at least one Transition via `<Connection>` elements. Steps and Transitions are referenced by their `Number` attribute through `<StepRef>` and `<TransitionRef>`.
+
+---
+
+## TIA Portal Import — Extension Reference for Copilot
+
+This section describes how the **TIA Portal Import** VS Code extension
+organizes the workspace and which features Copilot should use to work
+optimally with TIA Portal V19 / V20 / V21.
+
+### Workspace layout
+
+`InitWorkspace` (run once on first connect) scaffolds:
+
+```
+<workspace>/
+  .github/
+    copilot-instructions.md         # this file
+    ProjectDescription.md           # project documentation (Mermaid diagrams)
+    Schemas/                        # SimaticML XSDs for validation
+  Tools/                            # user scripts (.py, .ps1) + matching .md
+  UserFiles/                        # script outputs (excluded from TIA import)
+  TiaExport/                        # all TIA Portal mirror data
+    Projects/
+      <ProjectName>/
+        Devices/
+          PLCs/<PlcName>/
+            Program blocks/         # FB/FC/OB/DB → .xml | .scl | .s7dcl(+.s7res) | .db
+            PLC tags/               # tag tables   → .xml | .xlsx
+            PLC data types/         # UDTs         → .xml
+            Watch and force tables/
+            DeviceConfiguration/    # HW config    → .xml | .aml (CAx)
+          HMIs/<HmiName>/
+            Screens/  Tags/  Connections/
+          IO_Devices/<DeviceName>/
+        Library/Types/              # project library types (V20+ for SD)
+```
+
+The export folder name comes from `tiaImport.exportFolderName` (default
+`TiaExport`). Path matchers in context menus depend on these exact folder
+names — **do not rename them**.
+
+### Extension commands (Command Palette: `TIA Import: …`)
+
+**Connection**
+- `Connect to TIA Portal` / `Disconnect from TIA Portal`
+- `Select Project` — pick from running TIA instances
+- `Select TIA Portal Version` — V19 / V20 / V21 (requires window reload)
+- `Prepare Workspace` — scaffolds the layout above
+- `Refresh Project Structure`
+- `Show Logs` — opens the `TIA Portal Import` Output channel
+
+**Format toggles** (also visible as buttons in the Connection panel)
+- `Select Export Format` — `xml` ↔ `sd` (program blocks)
+- `Format PLC Tags` — `xml` ↔ `xlsx`
+- `Format HW` — `xml` ↔ `cax` (AutomationML `.aml`)
+- `Compile after Export` — `always` / `ask` / `never`
+
+**Import (TIA → workspace)**
+- `Import Entire Project`, `Import Device`, `Import Block`, `Import Block Folder`
+- `Import Tag Tables` / `Import Tag Table`
+- `Import Data Types` / `Import Data Type` (UDTs)
+- `Import Watch Tables` / `Import Watch Table`
+- `Import HMI Screens` / `Import HMI Tags` / `Import HMI Connections` / `Import All HMI Elements`
+- `Import HW Configuration` / `Import Device HW Configuration`
+- `Import Programs for All Devices in Category` / `Import HW Config for All Devices in Category`
+- `Import Library Types` / `Import Library Folder` / `Import Library Type`
+
+**Export (workspace → TIA)** — context menu, by file/folder pattern:
+| Trigger | Command |
+|--------|---------|
+| `.xml` / `.scl` / `.s7dcl` / `.db` under `Program blocks/` | `Export Blocks to TIA` |
+| Folder under `Program blocks/` | `Export Blocks to TIA (Folder)` |
+| `.xlsx` under `PLC tags/` | `Export XLSX Tags to TIA Portal` |
+| Folder under `PLC tags/` | `Export XLSX Tags to TIA Portal (Folder)` |
+| `.xml` outside `Program blocks` and outside `IO_Devices` | `Export to TIA Portal: XML File` |
+| `.aml` or `.xml` under `DeviceConfiguration/` | `Export to TIA Portal: HW Config` |
+| Folder `Devices/<Category>/<Device>` | `Export to TIA - Program and HW` (Unified) or `Export to TIA - Program without HW` |
+
+### Settings (`tiaImport.*`)
+
+| Setting | Default | Notes |
+|---------|---------|-------|
+| `tiaPortalVersion` | `21` | `19` / `20` / `21`; window reload to apply |
+| `tiaPortalPath` | `""` | Auto-detected from version when empty |
+| `exportFolderName` | `"TiaExport"` | Workspace folder for all TIA mirror data |
+| `autoConnect` | `false` | Connect on activation |
+| `exportFormat` | `"sd"` | `xml` (SimaticML) or `sd` (`.s7dcl` LAD/FBD + `.scl` SCL via SD path; V20+ only — V19 falls back to XML) |
+| `dbExportFormat` | `"db"` | Global DB → `.db` source or `.xml`. Instance DBs always `.xml` |
+| `tagTableFormat` | `"xlsx"` | PLC tags → `.xlsx` (with `Tags`/`Constants` sheets) or `.xml` |
+| `hwConfigFormat` | `"cax"` | HW config → `.aml` (CAx, recommended) or per-device `.xml` |
+| `compileAfterExport` | `"ask"` | `always` / `ask` / `never` |
+| `includeComments` | `true` | Include en-US comments in exports |
+| `preserveTimestamps` | `true` | Keep TIA timestamps to detect real changes |
+| `excludeSystemBlocks` | `true` | Skip Siemens system blocks |
+| `showImportExportDetails` | `false` | Verbose Output channel section |
+| `dotnetPath` | `""` | Auto-detect .NET 4.8 runtime |
+| `lmTools.autoConfirmImports` | `false` | When false, LM-tool imports overwriting TIA objects ask for confirmation |
+| `lmTools.maxFixIterations` | `5` | Cap on `tia_fix_compile_errors` loop (1–20) |
+
+### Export format decision matrix
+
+| Block type | `exportFormat="xml"` | `exportFormat="sd"` (V20+) |
+|------------|----------------------|---------------------------|
+| FB / FC / OB in **SCL** | `.xml` | `.scl` (via `GenerateSource`) |
+| FB / FC / OB in **LAD / FBD / STL** | `.xml` | `.s7dcl` + `.s7res` (via `ExportAsDocuments`) |
+| GRAPH FB | `.xml` | `.xml` (SD not supported) |
+| **Global DB** | `.xml` | follows `dbExportFormat` (`.db` or `.xml`) |
+| **Instance DB** | `.xml` (always) | `.xml` (always) |
+| **UDT** | `.xml` | `.xml` |
+
+Library types follow the same matrix (per-type fallback to XML when SD
+fails). On TIA V19, `sd` for LAD/FBD/STL automatically degrades to `.xml`
+because `ExportAsDocuments` requires V20+.
+
+### Compile workflow
+
+After every export the extension can compile the target PLC and surface
+results in the **PROBLEMS** panel:
+
+- Compile errors from XML/SCL/SD imports are parsed and resolved to file +
+  line in the workspace (`s7xmlErrorParser`, `s7dclErrorParser`).
+- The `compileAfterExport` setting controls whether compilation runs
+  automatically (`always`), prompts (`ask`), or is skipped (`never`).
+- Errors persist in the PROBLEMS panel until the next compile/import.
+
+### Smart-export behaviour Copilot must respect
+
+- **Comparison-based overwrite** — exports diff against the current TIA
+  object and skip blocks that match (timestamps + normalized content).
+- **Orphan cleanup** — blocks/folders that exist in TIA but not in the
+  workspace folder being exported are deleted in TIA. **Always export
+  whole folders intentionally** — partial exports may delete unrelated
+  blocks if a parent folder export is invoked.
+- **Dependency order** — UDT → FB → FC → OB → DB on import, and a stable
+  alphabetical order on export.
+- **Know-how-protected blocks** — detected and skipped with a warning
+  (do not regenerate them locally).
+- **Instance DBs** are created via API from the parent FB, not by importing
+  IDB XML. Hand-edited IDB `.xml` files may be ignored.
+
+---
+
+## Autonomous TIA Portal workflow (Language Model Tools)
+
+The extension exposes **18 Language Model Tools** (prefix `tia_`) plus a
+chat participant `@tia` (`tia.assistant`). When the user asks to import,
+export, compile, or fix PLC code, **prefer these tools over manually
+running commands or editing TIA-export files by hand**.
+
+| Tool | Purpose |
+|------|---------|
+| `tia_connect`, `tia_disconnect` | Attach to / detach from TIA Portal |
+| `tia_list_projects`, `tia_select_project` | Discover and pick the active project |
+| `tia_list_devices`, `tia_list_blocks` | Enumerate devices and blocks (paging + name filter) |
+| `tia_export_block`, `tia_export_device` | Pull blocks / whole device to local files under `TiaExport/` |
+| `tia_export_project` | Export **every** device (programs + optional HW). Equivalent of UI `Import Entire Project`. |
+| `tia_export_hw_config` | Pull HW config to `Devices/<Category>/<Device>/DeviceConfiguration/` (flat `Devices/IO_Devices/` for IO devices). Omit `device` for **project-wide** HW export. Honors `tiaImport.hwConfigFormat` (`xml` or `cax` AutomationML). |
+| `tia_import_file`, `tia_import_folder` | Push local `.xml` / `.scl` / `.s7dcl` / `.db` / `.xlsx` / `.aml` into TIA Portal |
+| `tia_import_hw_config` | Push HW Config `.xml` / `.aml` (file or folder) into TIA Portal. **Required** for HW — `tia_import_file` does not handle HW Config files. |
+| `tia_refresh` | Re-read project structure from TIA after manual changes |
+| `tia_compile` | Compile PLC software; populates the PROBLEMS panel |
+| `tia_get_problems` | Snapshot of current TIA diagnostics as JSON `{file, line, severity, message}` |
+| `tia_fix_compile_errors` | One step of the import → compile → diagnostics loop. Call repeatedly while `iterationsRemaining > 0` |
+
+### Required workflow
+
+1. Always start with `tia_connect`. If `currentProjectName` is empty, call
+   `tia_list_projects` and then `tia_select_project`.
+2. Resolve block / device ids via `tia_list_devices` and `tia_list_blocks`
+   before exporting or fixing — **never guess ids or paths**.
+3. After **every** import, run `tia_compile` and inspect `tia_get_problems`
+   (or the `messages` field returned by `tia_compile`).
+4. To autonomously fix compile errors, prefer `tia_fix_compile_errors`. It
+   honours `tiaImport.lmTools.maxFixIterations` (default 5):
+   - Call it with `importFolder` or `importFile`.
+   - Read `diagnostics`. If any, edit the matching files in this workspace
+     using the file/line numbers it returns.
+   - Call it again — pass only `device` to recompile without re-importing
+     unchanged files.
+   - Stop when `compile.success === true` or `iterationsRemaining === 0`.
+5. Imports that overwrite existing TIA objects trigger a confirmation
+   dialog unless `tiaImport.lmTools.autoConfirmImports` is `true`. Do not
+   try to bypass it.
+6. When editing files for a fix, respect the format rules above:
+   - `.s7dcl` → keep `.s7res` in sync (MLC ids).
+   - File name (without extension) **must equal** the block name inside
+     the file (`FUNCTION_BLOCK "Name"`, `<Name>...</Name>`).
+   - Stay within the SimaticML XSD schemas in `.github/Schemas/`.
+7. Prefer **smaller, targeted exports/imports** (single block or single
+   subfolder) when fixing — avoid orphan cleanup on parent folders unless
+   that is explicitly the intent.
+
+### Chat participant
+
+`@tia` (`tia.assistant`) is registered as a VS Code chat participant. When
+the user addresses it, the same 13 tools are available plus a built-in
+system prompt that enforces the rules above.
+
+### Quick troubleshooting cues
+
+- **"SD format requires V20+"** → user is on V19; switch `exportFormat` to
+  `xml` or upgrade TIA Portal.
+- **"Could not load file or assembly 'Siemens.Engineering.Base, Version=21.0.0.0'"**
+  → wrong `tiaPortalVersion`; per-version wrapper binaries live under
+  `dotnet/TiaOpennessWrapper/bin/Release/net48/V<n>/`.
+- **Compile errors point to `.s7dcl` line numbers** → use
+  `s7dclErrorParser` mappings; LAD/FBD blocks **cannot** be edited as SCL.
+- **Tag-table import drops constants** → expected. The `Constants` sheet is
+  preserved in `.xlsx` but TIA Openness has no `PlcUserConstant` import.
+- **HW Config diff is noisy in `.xml` mode** → switch `hwConfigFormat` to
+  `cax` for stable round-trips.
+
+

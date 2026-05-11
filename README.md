@@ -1,7 +1,7 @@
 # TIA Portal Import — VS Code Extension
 
 <!-- VERSION-BADGE -->
-[![Version](https://img.shields.io/badge/version-1.0.120-blue)](package.json)
+[![Version](https://img.shields.io/badge/version-2.0.100-blue)](package.json)
 <!-- /VERSION-BADGE -->
 
 [![VS Code](https://img.shields.io/badge/VS%20Code-%3E%3D1.80.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
@@ -11,24 +11,35 @@
 
 **Bidirectional bridge between VS Code and Siemens TIA Portal** — import PLC/HMI projects from TIA Portal to local files, edit them with full VS Code + Copilot power, and export changes back. Built on the TIA Portal Openness API.
 
+![TIA Portal Import Overview](Screenshots/Overview.png)
+
 ---
 
 ## Key Features
 
 ### Import from TIA Portal (TIA → local files)
 
-| Capability                      | Description                                                                                                       |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| **Connect to TIA Portal** | Auto-detect running TIA Portal instances or open a project file (`.ap21`)                                       |
-| **Import Entire Project** | Export complete project structure with all devices, blocks, tags, UDTs, and HW config                             |
-| **Import Devices**        | Import individual devices or all devices in a category (PLCs, HMIs, IO_Devices, Computers)                        |
-| **Import Program Blocks** | Export OB, FB, FC, F-FB, F-FC, DB blocks in XML, SCL, SD (`.s7dcl` / `.s7res`), or DB source (`.db`) format |
-| **Import Tag Tables**     | Export PLC tag tables as SimaticML XML or Excel XLSX spreadsheets                                                 |
-| **Import UDTs**           | Export PLC data types (user-defined types)                                                                        |
-| **Import Watch Tables**   | Export watch and force tables                                                                                     |
-| **Import HMI**            | Export HMI screens, tags, and connections                                                                         |
-| **Import HW Config**      | Export hardware configuration for all devices                                                                     |
-| **Project Explorer**      | Browse the full TIA Portal project hierarchy in the VS Code sidebar                                               |
+| Capability                       | Description                                                                                                                                                                                                                                          |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Connect to TIA Portal**  | Auto-detect running TIA Portal instances or open a project file (`.ap18` /`.ap19` / `.ap20` / `.ap21`)                                                                                                                                      |
+| **Import Entire Project**  | Export complete project structure with all devices, blocks, tags, UDTs, and HW config                                                                                                                                                                |
+| **Import Devices**         | Import individual devices or all devices in a category (PLCs, HMIs, IO_Devices, Computers)                                                                                                                                                           |
+| **Import Program Blocks**  | Export OB, FB, FC, F-FB, F-FC, DB blocks in XML, SCL, SD (`.s7dcl` / `.s7res`), or DB source (`.db`) format                                                                                                                                    |
+| **Import Tag Tables**      | Export PLC tag tables as SimaticML XML or Excel XLSX spreadsheets                                                                                                                                                                                    |
+| **Import UDTs**            | Export PLC data types (user-defined types)                                                                                                                                                                                                           |
+| **Import Watch Tables**    | Export watch and force tables                                                                                                                                                                                                                        |
+| **Import HMI**             | Export HMI screens, tags, and connections                                                                                                                                                                                                            |
+| **Import HW Config**       | Export hardware configuration as XML or**CAx / AutomationML (`.aml`)** — toggle via *Format HW* in the Connection panel                                                                                                                   |
+| **Import Project Library** | Export the**Project Library &gt; Types** tree (FBs, FCs, UDTs, …) — per-type format selection: LAD/FBD/STL → `.s7dcl`/`.s7res` (V20+), SCL → `.scl`, UDT/GRAPH/CFC/SFC/DB → `.xml`. Master copies are intentionally not exported. |
+| **Project Explorer**       | Browse the full TIA Portal project hierarchy in the VS Code sidebar                                                                                                                                                                                  |
+
+### Local SimaticML Preview
+
+| Capability                                | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Graphical LAD / FBD viewer**      | Render local SimaticML XML program blocks as**interactive LAD or FBD network diagrams** directly in a VS Code panel — no TIA Portal connection required, no manual screenshots. Powered by the installed SIMATIC Automation Compare Tool renderer, embedded inside the editor and themed for the active VS Code color theme (dark and light). Each network is shown as it appears in TIA Portal, with full operand names (truncated labels like `#ManMs…gToRun` are automatically expanded to the full `#ManMsgL1ToL2.oCountMsgToRun`). |
+| **Automation Compare Tool preview** | Open local SimaticML XML code blocks, DBs, PLC tag tables and UDTs in a VS Code preview panel powered by the installed Siemens SIMATIC Automation Compare Tool renderer. External ACT launch remains available as a fallback setting.                                                                                                                                                                                                                                                                                                               |
+| **Git revision diff in ACT**        | Compare a local `.xml` block or `.s7dcl` SD block against another Git revision in the same embedded ACT webview. The command materializes the selected revisions to a temporary folder, resolves `.s7dcl` files through their `.tiaPreview/*.xml` mirrors, and opens a graphical side-by-side ACT diff inside VS Code.                                                                                                                                                                                                                      |
 
 ### Export to TIA Portal (local files → TIA)
 
@@ -37,7 +48,7 @@
 | **Export Blocks**              | Import XML / SCL / SD / DB source files back to TIA Portal                                                     |
 | **Export Tag Tables**          | Import XML or XLSX tag tables to TIA Portal                                                                    |
 | **Export UDTs / Watch Tables** | Import data types and watch tables                                                                             |
-| **Export HW Config**           | Import hardware configuration (XML / AML / CAx)                                                                |
+| **Export HW Config**           | Import hardware configuration as XML or**CAx / AutomationML (`.aml`)** via `CaxProvider`             |
 | **Unified Export**             | One-click export of an entire device folder in dependency order (UDTs → Blocks → Tags → Watch Tables → HW) |
 | **Smart Comparison**           | Only overwrite items that actually changed (normalized XML diff; Instance DBs compared by StartValues only)    |
 | **Orphan Cleanup**             | Auto-delete blocks, groups, tag tables, and UDTs in TIA that no longer exist locally                           |
@@ -55,19 +66,39 @@
 - **Compile after export** — optional PLC software compilation in TIA Portal after each export (Always / Ask / Never); results shown in OUTPUT panel
 - **Compile error tracking** — compile errors and warnings mapped to VS Code PROBLEMS panel with automatic file matching, network-to-line resolution (XML, S7DCL, SCL), and direct navigation to the error location
 
+### Copilot / AI Agent Integration
+
+The extension exposes **18 Language Model Tools** (prefix `tia_`) plus a `@tia` chat participant, so GitHub Copilot (and any other VS Code LM-tool consumer) can drive TIA Portal end-to-end without manual clicks:
+
+- **Connection / discovery** — `tia_connect`, `tia_disconnect`, `tia_list_projects`, `tia_select_project`, `tia_refresh`, `tia_list_devices`, `tia_list_blocks`
+- **Pull from TIA → workspace** — `tia_export_block`, `tia_export_device`, `tia_export_project` (entire project), `tia_export_hw_config` (per-device or project-wide HW Config; honours `tiaImport.hwConfigFormat`)
+- **Push workspace → TIA** — `tia_import_file`, `tia_import_folder` (blocks, tags, UDTs, watch tables), `tia_import_hw_config` (HW Config XML/AML — required for HW; `tia_import_file` does not handle HW)
+- **Compile loop** — `tia_compile`, `tia_get_problems`, `tia_fix_compile_errors` (orchestrates import → compile → diagnostics until clean or `tiaImport.lmTools.maxFixIterations` is reached)
+- **Analysis** — `tia_export_cross_references` (full PLC cross-reference dump to JSONL/CSV, including unused symbols)
+
+Imports that overwrite existing TIA objects show a confirmation dialog unless `tiaImport.lmTools.autoConfirmImports` is enabled. The chat participant `@tia` is registered as `tia.assistant` and has the same toolset available.
+
 ---
 
 ## Requirements
 
-| Requirement          | Version                             |
-| -------------------- | ----------------------------------- |
-| **OS**         | Windows 10 / 11                     |
-| **TIA Portal** | ≥ V21 with Openness license       |
-| **.NET**       | .NET 8.0 Runtime                    |
-| **VS Code**    | ≥ 1.80.0                           |
-| **Node.js**    | 20+ (for building / packaging only) |
+| Requirement          | Version                                    |
+| -------------------- | ------------------------------------------ |
+| **OS**         | Windows 10 / 11                            |
+| **TIA Portal** | V18, V19, V20 or V21 with Openness license |
+| **.NET**       | .NET 8.0 Runtime                           |
+| **VS Code**    | ≥ 1.80.0                                  |
+| **Node.js**    | 20+ (for building / packaging only)        |
 
-> Export-to-TIA features require **TIA Portal V21**.
+**SIMATIC Automation Compare Tool (ACT)** is optional and must be installed separately from Siemens Support when you want graphical local XML previews or Git revision diffs. The extension does not bundle ACT.
+
+👉 Download: [SIMATIC Automation Compare Tool — Siemens Support (109797235)](https://support.industry.siemens.com/cs/document/109797235/simatic-automation-compare-tool-?dti=0&lc=en-PL)
+
+> A single VSIX supports **TIA Portal V18, V19, V20 and V21** — pick the active version via the **TIA Portal** entry at the top of the Connection panel (or the `tiaImport.tiaPortalVersion` setting). Newer Openness features degrade gracefully on older versions:
+>
+> - **SD format** (`.s7dcl` / `.s7res`) requires **V20+**. On V18/V19 the extension automatically falls back to XML for LAD/FBD/STL blocks; SCL blocks continue to export as `.scl`.
+> - **Cross-reference dump** (`tia_export_cross_references`) requires **V18+**. **Heads-up:** building a full cross-reference table is performed by TIA Portal itself and can take **several minutes — sometimes 10 min+ on large PLCs** (thousands of blocks, large fault-tolerant projects). Progress is logged line-by-line in the *TIA Portal Import* output channel; the operation is non-blocking, so other imports/compiles continue normally.
+> - **CAx / AutomationML HW Config** is available on all supported versions.
 >
 > The Windows user running VS Code must be a member of the **Siemens TIA Openness** user group. See [Adding users to the Siemens TIA Openness user group](https://docs.tia.siemens.cloud/r/en-us/v20/tia-portal-openness-api-for-automation-of-engineering-workflows/basics/installation/adding-users-to-the-siemens-tia-openness-user-group) for details.
 
@@ -122,6 +153,24 @@
 5. If **Compile after Export** is enabled (`always` or `ask`), the extension compiles PLC software in TIA Portal after a successful export
 6. Compile results are shown in the **OUTPUT** panel; errors and warnings appear in the **PROBLEMS** panel with clickable file links
 
+### Previewing local SimaticML XML
+
+1. **Install SIMATIC Automation Compare Tool** separately — download it from Siemens Industry Support: [SIMATIC Automation Compare Tool (109797235)](https://support.industry.siemens.com/cs/document/109797235/simatic-automation-compare-tool-?dti=0&lc=en-PL). The extension does not bundle ACT.
+2. Leave `tiaImport.automationCompareTool.autoDetect` enabled, or set `tiaImport.automationCompareTool.path` to the ACT executable.
+3. In VS Code Explorer, right-click a local SimaticML XML file supported by ACT: code block, DB, PLC tag table or UDT.
+4. Choose **TIA Import: Preview XML with Automation Compare Tool**.
+
+The preview command is contributed only to the Explorer right-click menu and does not require a TIA Portal connection. It validates the selected file before the ACT renderer starts; SCL, SD, DB source, hardware config XML, watch/force tables, unknown XML and know-how protected placeholders are rejected with a message. By default `tiaImport.automationCompareTool.embedMode` opens the installed ACT renderer in a VS Code webview panel that **follows the active VS Code color theme** (sidebar, tables, tabs, LAD/FBD diagram canvas and block bodies are repainted in dark mode for readability) and **expands truncated operand labels** in LAD/FBD networks (e.g. `#ManMs…gToRun` becomes the full `#ManMsgL1ToL2.oCountMsgToRun`). Set it to `external` when you want ACT to launch in its own native window. In external mode, `tiaImport.automationCompareTool.argumentsTemplate` follows ACT's documented command line syntax and supports `${file}` plus `${title}`, for example `--uiCulture=en-US --title1 "${title}" "${file}"`.
+
+### Comparing Git revisions in ACT
+
+1. Install SIMATIC Automation Compare Tool and keep `tiaImport.automationCompareTool.embedMode` set to `native` for the in-editor experience.
+2. In VS Code Explorer, right-click a supported local `.xml` SimaticML file or a `.s7dcl` SD block.
+3. Choose **TIA Import: Compare with Git Revision in ACT**.
+4. Pick the left and right revisions from the working tree plus recent Git history.
+
+The diff opens in the same embedded ACT webview used by the single-file preview, so LAD/FBD network changes stay graphical and reviewable inside VS Code. For `.s7dcl` files the command compares the generated `.tiaPreview/*.xml` mirror; commit that mirror together with the SD files if you want historical `.s7dcl` revisions to be available. If the embedded renderer cannot be loaded, or when `tiaImport.automationCompareTool.embedMode` is set to `external`, the command falls back to launching ACT externally with `tiaImport.automationCompareTool.compareArgumentsTemplate` (`${file1}`, `${file2}`, `${title1}`, `${title2}`).
+
 ### Exported Directory Structure
 
 When you connect to TIA Portal (or run the `TIA Import: Prepare Workspace` command), the extension scaffolds the workspace with template files:
@@ -129,6 +178,8 @@ When you connect to TIA Portal (or run the `TIA Import: Prepare Workspace` comma
 ```
 <Workspace>/
 ├── .gitignore                        # TIA-specific ignores (from template)
+├── CLAUDE.md                         # Claude Code instructions (re-exports .github/copilot-instructions.md)
+├── AGENTS.md                         # Open agents.md standard (Cursor / Aider / Codex / Gemini CLI / Jules)
 ├── .github/
 │   ├── copilot-instructions.md       # AI coding rules for TIA XML files
 │   ├── ProjectDescription.md         # Auto-generated project description
@@ -169,6 +220,8 @@ When you connect to TIA Portal (or run the `TIA Import: Prepare Workspace` comma
 
 Template files (`.gitignore`, `.github/`) are only created if they don't already exist — existing files are never overwritten. Templates are maintained in `Documentation/Templates/`.
 
+`UserFiles/` is always created during workspace preparation, even if the template folder is empty in the packaged extension.
+
 You can also scaffold the workspace manually at any time via `TIA Import: Prepare Workspace` command (available in the Command Palette and in the Connection panel title bar).
 
 ### Workspace Templates (`.github/`)
@@ -180,7 +233,9 @@ On first connection to TIA Portal (or when you run `TIA Import: Prepare Workspac
 | **`.github/copilot-instructions.md`** | Instructions for GitHub Copilot (and other AI assistants) that teach the model how to work with Siemens TIA Portal XML files. Covers SimaticML XML structure,`.s7dcl` / `.s7res` file conventions, MLC ID handling, network titles/comments, and rules for updating `ProjectDescription.md`. These instructions are automatically picked up by Copilot in VS Code.                                                         |
 | **`.github/ProjectDescription.md`**   | A living document describing the project's architecture, communication topology, block hierarchy, data structures, and data flow. Initially empty — it is populated automatically by Copilot when you start analyzing the project (as instructed by `copilot-instructions.md`). Should be kept up to date when blocks, communication channels, or data structures change. Includes Mermaid diagrams for visual documentation. |
 | **`.github/Schemas/`**                | SimaticML XSD schema files (`SW.PlcBlocks.*.xsd`, `SW.Common_v3.xsd`, etc.) copied from `Documentation/Schemas/`. These schemas enable XML validation and IntelliSense for exported TIA Portal block files directly in VS Code.                                                                                                                                                                                            |
-| **`.gitignore`**                      | TIA-specific ignore rules (e.g.`.tia-cache`) to keep temporary/cache files out of version control.                                                                                                                                                                                                                                                                                                                             |
+| **`.gitignore`**                      | TIA-specific ignore rules (e.g.`.tia-cache`, `CLAUDE.local.md`) to keep temporary/cache files out of version control.                                                                                                                                                                                                                                                                                                        |
+| **`CLAUDE.md`**                       | Instructions for[Claude Code](https://docs.anthropic.com/claude/docs/claude-code). Uses Claude's native `@<path>` import syntax to re-export the full ruleset from `.github/copilot-instructions.md`, so all AI agents share a single source of truth. Add machine-local notes to `CLAUDE.local.md` (already gitignored).                                                                                                     |
+| **`AGENTS.md`**                       | Follows the open[agents.md](https://agents.md) standard — read by Cursor, Aider, OpenAI Codex, Gemini CLI, Jules and other AI coding agents. Links to `.github/copilot-instructions.md` for the full ruleset and lists build / test / code-style essentials.                                                                                                                                                                     |
 
 > **Tip:** Commit the `.github/` directory to your Git repository so that every team member and CI pipeline benefits from the same AI instructions, project documentation, and XML schemas.
 
@@ -188,20 +243,21 @@ On first connection to TIA Portal (or when you run `TIA Import: Prepare Workspac
 
 ## Extension Settings
 
-| Setting                               | Description                                                          | Default              |
-| ------------------------------------- | -------------------------------------------------------------------- | -------------------- |
-| `tiaImport.exportFolderName`        | Folder name for TIA exports                                          | `TiaExport`        |
-| `tiaImport.tiaPortalPath`           | Path to TIA Portal installation                                      | `C:\…\Portal V21` |
-| `tiaImport.autoConnect`             | Auto-connect on activation                                           | `false`            |
-| `tiaImport.includeComments`         | Include comments in export                                           | `true`             |
-| `tiaImport.exportFormat`            | Block export format (`xml` / `sd`)                               | `xml`              |
-| `tiaImport.tagTableFormat`          | Tag table export format (`xml` / `xlsx`)                         | `xlsx`             |
-| `tiaImport.preserveTimestamps`      | Preserve original timestamps                                         | `true`             |
-| `tiaImport.excludeSystemBlocks`     | Exclude system blocks                                                | `true`             |
-| `tiaImport.dotnetPath`              | Path to .NET runtime                                                 | Auto-detect          |
-| `tiaImport.dbExportFormat`          | Global DB export format (`xml` / `db`)                           | `db`               |
-| `tiaImport.showImportExportDetails` | Show detailed import/export messages in the output log               | `false`            |
-| `tiaImport.compileAfterExport`      | Compile PLC software after export (`always` / `ask` / `never`) | `ask`              |
+| Setting                                 | Description                                                                                                                                                                                                                                                                                                                                                                              | Default              |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------- |
+| `tiaImport.exportFolderName`          | Folder name for TIA exports                                                                                                                                                                                                                                                                                                                                                              | `TiaExport`        |
+| `tiaImport.tiaPortalPath`             | Path to TIA Portal installation                                                                                                                                                                                                                                                                                                                                                          | `C:\…\Portal V21` |
+| `tiaImport.autoConnect`               | Auto-connect on activation                                                                                                                                                                                                                                                                                                                                                               | `false`            |
+| `tiaImport.includeComments`           | Include comments in export                                                                                                                                                                                                                                                                                                                                                               | `true`             |
+| `tiaImport.exportFormat`              | Block export format (`xml` / `sd`)                                                                                                                                                                                                                                                                                                                                                   | `xml`              |
+| `tiaImport.tagTableFormat`            | Tag table export format (`xml` / `xlsx`)                                                                                                                                                                                                                                                                                                                                             | `xlsx`             |
+| `tiaImport.preserveTimestamps`        | Preserve original timestamps                                                                                                                                                                                                                                                                                                                                                             | `true`             |
+| `tiaImport.excludeSystemBlocks`       | Exclude system blocks                                                                                                                                                                                                                                                                                                                                                                    | `true`             |
+| `tiaImport.dotnetPath`                | Path to .NET runtime                                                                                                                                                                                                                                                                                                                                                                     | Auto-detect          |
+| `tiaImport.dbExportFormat`            | Global DB export format (`xml` / `db`)                                                                                                                                                                                                                                                                                                                                               | `db`               |
+| `tiaImport.showImportExportDetails`   | Show detailed import/export messages in the output log                                                                                                                                                                                                                                                                                                                                   | `false`            |
+| `tiaImport.compileAfterExport`        | Compile PLC software after export (`always` / `ask` / `never`)                                                                                                                                                                                                                                                                                                                     | `ask`              |
+| `tiaImport.autoExportCrossReferences` | Generate cross-reference dump after import (`always` / `ask` / `never`). In `ask` mode the prompt is shown **per PLC** when the dump is about to start and auto-skips after **5 s** if you don't respond. ⚠️ Building the table can take **several minutes — 10 min+ on large PLCs** because TIA Portal computes it itself. Default is therefore `ask`. | `ask`              |
 
 ### Block Export Formats
 
@@ -353,7 +409,6 @@ The extension uses **electron-edge-js** to call the .NET `TiaOpennessWrapper.dll
 
 - **Windows only** — TIA Portal and the Openness API are Windows-only
 - **Know-how protected blocks** — cannot be exported; the extension detects and skips placeholder files
-- **Export requires TIA Portal ≥ V21** — import from TIA works with V18+, but export-to-TIA needs ≥ V21
 - **SD format (LAD/FBD)** — only supports LAD/FBD and mixed blocks (no protected blocks)
 - **Large projects** — full project import may take several minutes depending on project size
 
@@ -416,78 +471,13 @@ You can also run parity check from VS Code task: **Test: method parity**.
 
 > If `npm run package` fails on Node.js 18 with `ReferenceError: File is not defined` (from `undici`), switch to **Node.js 20+**.
 
-### Project Structure
-
-```
-TiaAI.ExtVScode/
-├── src/                           # TypeScript source (VS Code extension)
-│   ├── extension.ts               #   Entry point — activation, service init
-│   ├── commands/                   #   VS Code command handlers
-│   │   ├── connectCommand.ts      #     Connect/disconnect to TIA Portal
-│   │   ├── import*.ts             #     Import commands (blocks, tags, UDTs, HMI…)
-│   │   └── export/                #     Export-to-TIA commands
-│   │       ├── exportUnified.ts   #       Unified device export (dependency order)
-│   │       ├── exportSingleFile.ts#       Single file export
-│   │       ├── exportFolder.ts    #       Folder batch export
-│   │       └── exportUtils.ts     #       Sorting, detection, utilities
-│   ├── providers/                 #   VS Code tree view data providers
-│   │   ├── projectTreeProvider.ts #     Project Explorer sidebar tree
-│   │   └── connectionTreeProvider.ts #  Connection status panel
-│   ├── services/                  #   Business logic layer
-│   │   ├── tiaConnection.ts       #     Connection lifecycle & health checks
-│   │   ├── tiaOpennessBridge.ts   #     TypeScript ↔ .NET interop (edge-js)
-│   │   ├── projectImport.ts       #     Import orchestrator
-│   │   └── import/                #     Specialized import services
-│   │       ├── blockImportService.ts
-│   │       ├── tagTableImportService.ts
-│   │       ├── udtImportService.ts
-│   │       ├── watchTableImportService.ts
-│   │       └── hmiImportService.ts
-│   ├── models/                    #   TypeScript data models
-│   │   ├── tiaModels.ts           #     Project/device/block models
-│   │   └── hwConfigModels.ts      #     Hardware configuration models
-│   └── utils/                     #   Shared utilities
-│       ├── logger.ts              #     Output channel logger
-│       ├── config.ts              #     Extension settings helper
-│       ├── statusBar.ts           #     Status bar connection indicator
-│       └── workspace.ts           #     Workspace/template management
-├── dotnet/                        # .NET wrapper (C# — TIA Openness API)
-│   └── TiaOpennessWrapper/
-│       ├── TiaConnector.cs        #   Edge-js entry point & method dispatcher
-│       ├── TiaPortalService.cs    #   Core service — connection, project, delegation
-│       ├── Models/                #   C# data models
-│       │   ├── TiaModels.cs
-│       │   └── HwConfigModels.cs
-│       └── Services/
-│           ├── Export/            #   Export TO TIA Portal (local → TIA)
-│           │   ├── Software/      #     Blocks, tags, UDTs, watch tables
-│           │   └── HW/            #     Hardware configuration
-│           └── Import/            #   Import FROM TIA Portal (TIA → local)
-│               ├── Software/      #     Blocks, tags, UDTs, watch tables, HMI
-│               └── HW/            #     Hardware configuration
-├── Documentation/
-│   ├── API/                       # Openness API XML reference files
-│   ├── Schemas/                   # SimaticML XSD schemas
-│   └── Templates/                 # Workspace template files
-│       ├── .gitignore
-│       ├── .github/
-│       │   ├── copilot-instructions.md
-│       │   ├── ProjectDescription.md
-│       │   └── Schemas/
-│       ├── Tools/                 # Utility scripts (Python, PS, etc.)
-│       └── UserFiles/             # Output dir for scripts (git-ignored)
-├── resources/icons/               # Extension and tree view icons
-├── package.json                   # Extension manifest & contribution points
-└── tsconfig.json                  # TypeScript configuration
-```
-
 ## Community — Share Your Scripts & Ideas
 
 This extension ships with a `Tools/` directory for utility scripts and a `copilot-instructions.md` file that teaches AI assistants how to work with TIA Portal projects.
 
 **We encourage you to contribute!** If you have created useful scripts, automation tools, or improvements to the Copilot instructions:
 
-1. **Fork** the [TiaAI.ExtVScode](https://github.com/cmariusz/TiaAI.ExtVScode) repository on GitHub
+1. **Fork** the [TiaImportExport.VSExt](https://github.com/cmariusz/TiaImportExport.VSExt) repository on GitHub
 2. Add your scripts to `Tools/` (with a matching `.md` description)
 3. Or propose changes to `.github/copilot-instructions.md`
 4. **Open a Pull Request** — your contribution will help the entire TIA Portal + VS Code community
