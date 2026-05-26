@@ -1,0 +1,32 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>TiaOpennessWrapper.Tests</RootNamespace>
+    <AssemblyName>TiaOpennessWrapper.Tests</AssemblyName>
+    <PlatformTarget>x64</PlatformTarget>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
+    <PackageReference Include="xunit" Version="2.9.0" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <!--
+    Pure helper source files are linked into the test assembly so we can
+    unit-test them WITHOUT pulling in the Siemens TIA Portal Openness API
+    dependencies. This makes the tests runnable on any machine with the
+    .NET SDK installed (no TIA Portal required).
+  -->
+  <ItemGroup>
+    <Compile Include="..\TiaOpennessWrapper\Services\Helpers\TiaFolderFinder.cs">
+      <Link>Linked\TiaFolderFinder.cs</Link>
+    </Compile>
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,1530 @@
+{
+	"name": "tia-import",
+	"displayName": "TIA Portal Import",
+	"description": "Import/export PLC programs from/to Siemens TIA Portal using TIA Portal Openness API",
+	"version": "2.0.106",
+	"license": "MIT",
+	"publisher": "MariuszCzyrnek",
+	"author": "Mariusz Czyrnek",
+	"icon": "resources/icons/extension-icon.png",
+	"engines": {
+		"vscode": "^1.95.0"
+	},
+	"categories": [
+		"Other"
+	],
+	"keywords": [
+		"siemens",
+		"tia portal",
+		"tiaportal",
+		"tia-portal",
+		"plc",
+		"openness",
+		"automation",
+		"siemens AI",
+		"tia portal AI",
+		"tiaportal AI",
+		"tia-portal AI",
+		"plc AI",
+		"openness AI",
+		"automation AI",
+		"tia portal copilot",
+		"tiaportal copilot",
+		"tia-portal copilot",
+		"plc copilot",
+		"openness copilot",
+		"automation copilot"
+	],
+	"activationEvents": [
+		"onLanguageModelTool:tia_connect",
+		"onLanguageModelTool:tia_disconnect",
+		"onLanguageModelTool:tia_list_projects",
+		"onLanguageModelTool:tia_select_project",
+		"onLanguageModelTool:tia_list_devices",
+		"onLanguageModelTool:tia_list_blocks",
+		"onLanguageModelTool:tia_export_block",
+		"onLanguageModelTool:tia_export_device",
+		"onLanguageModelTool:tia_export_hw_config",
+		"onLanguageModelTool:tia_import_file",
+		"onLanguageModelTool:tia_import_folder",
+		"onLanguageModelTool:tia_import_hw_config",
+		"onLanguageModelTool:tia_export_project",
+		"onLanguageModelTool:tia_refresh",
+		"onLanguageModelTool:tia_compile",
+		"onLanguageModelTool:tia_get_problems",
+		"onLanguageModelTool:tia_fix_compile_errors",
+		"onLanguageModelTool:tia_export_cross_references",
+		"onChatParticipant:tia.assistant"
+	],
+	"main": "./out/extension.js",
+	"contributes": {
+		"commands": [
+			{
+				"command": "tia-import.connect",
+				"title": "TIA Import: Connect to TIA Portal",
+				"icon": "$(plug)"
+			},
+			{
+				"command": "tia-import.disconnect",
+				"title": "TIA Import: Disconnect from TIA Portal",
+				"icon": "$(debug-disconnect)"
+			},
+			{
+				"command": "tia-import.selectProject",
+				"title": "TIA Import: Select Project",
+				"icon": "$(folder-opened)"
+			},
+			{
+				"command": "tia-import.importProject",
+				"title": "TIA Import: Import Entire Project",
+				"icon": "$(cloud-download)"
+			},
+			{
+				"command": "tia-import.importDevice",
+				"title": "TIA Import: Import Device",
+				"icon": "$(device-desktop)"
+			},
+			{
+				"command": "tia-import.importBlock",
+				"title": "TIA Import: Import Block",
+				"icon": "$(file-code)"
+			},
+			{
+				"command": "tia-import.importBlockGroup",
+				"title": "TIA Import: Import Block Folder",
+				"icon": "$(folder-opened)"
+			},
+			{
+				"command": "tia-import.importTagTables",
+				"title": "TIA Import: Import Tag Tables",
+				"icon": "$(list-unordered)"
+			},
+			{
+				"command": "tia-import.importTagTable",
+				"title": "TIA Import: Import Tag Table",
+				"icon": "$(list-unordered)"
+			},
+			{
+				"command": "tia-import.importUdts",
+				"title": "TIA Import: Import Data Types",
+				"icon": "$(symbol-struct)"
+			},
+			{
+				"command": "tia-import.importUdt",
+				"title": "TIA Import: Import Data Type",
+				"icon": "$(symbol-struct)"
+			},
+			{
+				"command": "tia-import.importWatchTables",
+				"title": "TIA Import: Import Watch Tables",
+				"icon": "$(eye)"
+			},
+			{
+				"command": "tia-import.importWatchTable",
+				"title": "TIA Import: Import Watch Table",
+				"icon": "$(eye)"
+			},
+			{
+				"command": "tia-import.importHmiScreens",
+				"title": "TIA Import: Import HMI Screens",
+				"icon": "$(window)"
+			},
+			{
+				"command": "tia-import.importHmiTags",
+				"title": "TIA Import: Import HMI Tags",
+				"icon": "$(tag)"
+			},
+			{
+				"command": "tia-import.importHmiConnections",
+				"title": "TIA Import: Import HMI Connections",
+				"icon": "$(plug)"
+			},
+			{
+				"command": "tia-import.importAllHmi",
+				"title": "TIA Import: Import All HMI Elements",
+				"icon": "$(desktop-download)"
+			},
+			{
+				"command": "tia-import.importHwConfig",
+				"title": "TIA Import: Import HW Configuration",
+				"icon": "$(server-environment)"
+			},
+			{
+				"command": "tia-import.importDeviceHwConfig",
+				"title": "TIA Import: Import Device HW Configuration",
+				"icon": "$(server)"
+			},
+			{
+				"command": "tia-import.importDeviceCategory",
+				"title": "TIA Import: Import Programs for All Devices in Category",
+				"icon": "$(cloud-download)"
+			},
+			{
+				"command": "tia-import.importDeviceCategoryHwConfig",
+				"title": "TIA Import: Import HW Config for All Devices in Category",
+				"icon": "$(server-environment)"
+			},
+			{
+				"command": "tia-import.importLibrary",
+				"title": "TIA Import: Import Project Library Types",
+				"icon": "$(library)"
+			},
+			{
+				"command": "tia-import.importLibraryFolder",
+				"title": "TIA Import: Import Library Folder",
+				"icon": "$(cloud-download)"
+			},
+			{
+				"command": "tia-import.importLibraryType",
+				"title": "TIA Import: Import Library Type",
+				"icon": "$(cloud-download)"
+			},
+			{
+				"command": "tia-import.refresh",
+				"title": "TIA Import: Refresh Project Structure",
+				"icon": "$(refresh)"
+			},
+			{
+				"command": "tia-import.openSettings",
+				"title": "TIA Import: Open Settings",
+				"icon": "$(settings-gear)"
+			},
+			{
+				"command": "tia-import.selectTiaPortalVersion",
+				"title": "TIA Import: Select TIA Portal Version",
+				"icon": "$(versions)"
+			},
+			{
+				"command": "tia-import.selectExportFormat",
+				"title": "TIA Import: Select Export Format",
+				"icon": "$(file-code)"
+			},
+			{
+				"command": "tia-import.toggleTagTableXlsx",
+				"title": "TIA Import: Format PLC Tags",
+				"icon": "$(table)"
+			},
+			{
+				"command": "tia-import.toggleHwConfigFormat",
+				"title": "TIA Import: Format HW",
+				"icon": "$(circuit-board)"
+			},
+			{
+				"command": "tia-import.toggleS7dclPreviewXml",
+				"title": "TIA Import: Toggle SD → XML Preview Mirror",
+				"icon": "$(preview)"
+			},
+			{
+				"command": "tia-import.toggleCompileAfterExport",
+				"title": "TIA Import: Compile after Export",
+				"icon": "$(gear)"
+			},
+			{
+				"command": "tia-import.showLogs",
+				"title": "TIA Import: Show Logs",
+				"icon": "$(output)"
+			},
+			{
+				"command": "tia-import.previewBlockWithAutomationCompare",
+				"title": "TIA Import: Preview XML with Automation Compare Tool",
+				"icon": "$(preview)"
+			},
+			{
+				"command": "tia-import.previewS7dclLadFbd",
+				"title": "TIA Import: LAD/FBD Preview",
+				"icon": "$(preview)"
+			},
+			{
+				"command": "tia-import.compareS7dclRevisionsInAct",
+				"title": "TIA Import: Compare with Git Revision in ACT",
+				"icon": "$(git-compare)"
+			},
+			{
+				"command": "tia-import.prepareWorkspace",
+				"title": "TIA Import: Prepare Workspace",
+				"icon": "$(folder-active)"
+			},
+			{
+				"command": "tia-import.exportXmlToTia",
+				"title": "Export to TIA Portal: XML File",
+				"icon": "$(cloud-upload)"
+			},
+			{
+				"command": "tia-import.exportXmlFolderToTia",
+				"title": "Export to TIA Portal: XML Folder",
+				"icon": "$(folder-opened)"
+			},
+			{
+				"command": "tia-import.exportBlockToTia",
+				"title": "Export Blocks to TIA",
+				"icon": "$(cloud-upload)"
+			},
+			{
+				"command": "tia-import.exportBlockFolderToTia",
+				"title": "Export Blocks to TIA (Folder)",
+				"icon": "$(folder-opened)"
+			},
+			{
+				"command": "tia-import.exportHwConfigToTia",
+				"title": "Export to TIA Portal: HW Config XML",
+				"icon": "$(server-environment)"
+			},
+			{
+				"command": "tia-import.exportHwConfigFolderToTia",
+				"title": "Export to TIA Portal: HW Config Folder",
+				"icon": "$(server)"
+			},
+			{
+				"command": "tia-import.exportUnifiedToTia",
+				"title": "Export to TIA - Program and HW",
+				"icon": "$(cloud-upload)"
+			},
+			{
+				"command": "tia-import.exportProgramToTia",
+				"title": "Export to TIA - Program without HW",
+				"icon": "$(file-code)"
+			},
+			{
+				"command": "tia-import.exportXlsxToTia",
+				"title": "Export XLSX Tags to TIA Portal",
+				"icon": "$(cloud-upload)"
+			},
+			{
+				"command": "tia-import.exportXlsxFolderToTia",
+				"title": "Export XLSX Tags to TIA Portal (Folder)",
+				"icon": "$(folder-opened)"
+			}
+		],
+		"viewsContainers": {
+			"activitybar": [
+				{
+					"id": "tia-explorer",
+					"title": "TIA Portal Import",
+					"icon": "resources/icons/tia-activitybar.png"
+				}
+			]
+		},
+		"views": {
+			"tia-explorer": [
+				{
+					"id": "tiaConnection",
+					"name": "Connection",
+					"contextualTitle": "TIA Portal Connection",
+					"icon": "$(plug)"
+				},
+				{
+					"id": "tiaProjectExplorer",
+					"name": "Project Structure",
+					"contextualTitle": "TIA Project Explorer",
+					"icon": "$(list-tree)"
+				}
+			]
+		},
+		"viewsWelcome": [
+			{
+				"view": "tiaProjectExplorer",
+				"contents": "No TIA Portal project loaded.\n[Connect to TIA Portal](command:tia-import.connect)\n\n[Prepare Workspace](command:tia-import.prepareWorkspace)"
+			}
+		],
+		"menus": {
+			"view/title": [
+				{
+					"command": "tia-import.connect",
+					"when": "view == tiaConnection",
+					"group": "navigation@1"
+				},
+				{
+					"command": "tia-import.disconnect",
+					"when": "view == tiaConnection",
+					"group": "navigation@2"
+				},
+				{
+					"command": "tia-import.selectProject",
+					"when": "view == tiaConnection",
+					"group": "navigation@3"
+				},
+				{
+					"command": "tia-import.prepareWorkspace",
+					"when": "view == tiaConnection",
+					"group": "navigation@4"
+				},
+				{
+					"command": "tia-import.refresh",
+					"when": "view == tiaProjectExplorer",
+					"group": "navigation@1"
+				},
+				{
+					"command": "tia-import.importProject",
+					"when": "view == tiaProjectExplorer",
+					"group": "navigation@2"
+				},
+				{
+					"command": "tia-import.importHwConfig",
+					"when": "view == tiaProjectExplorer",
+					"group": "navigation@3"
+				},
+				{
+					"command": "tia-import.showLogs",
+					"when": "view == tiaProjectExplorer || view == tiaConnection",
+					"group": "navigation@5"
+				}
+			],
+			"view/item/context": [
+				{
+					"command": "tia-import.importDevice",
+					"when": "view == tiaProjectExplorer && viewItem == deviceWithPlc",
+					"group": "inline@1"
+				},
+				{
+					"command": "tia-import.importDeviceHwConfig",
+					"when": "view == tiaProjectExplorer && viewItem == deviceWithPlc",
+					"group": "inline@2"
+				},
+				{
+					"command": "tia-import.importDeviceHwConfig",
+					"when": "view == tiaProjectExplorer && viewItem == deviceHwOnly",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importDevice",
+					"when": "view == tiaProjectExplorer && viewItem == deviceWithPlc",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importDeviceHwConfig",
+					"when": "view == tiaProjectExplorer && viewItem == deviceWithPlc",
+					"group": "2_hwconfig"
+				},
+				{
+					"command": "tia-import.importDeviceHwConfig",
+					"when": "view == tiaProjectExplorer && viewItem == deviceHwOnly",
+					"group": "1_hwconfig"
+				},
+				{
+					"command": "tia-import.importBlockGroup",
+					"when": "view == tiaProjectExplorer && viewItem == blockGroup",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importBlockGroup",
+					"when": "view == tiaProjectExplorer && viewItem == blockGroup",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importBlock",
+					"when": "view == tiaProjectExplorer && viewItem == block",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importBlock",
+					"when": "view == tiaProjectExplorer && viewItem == block",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importTagTables",
+					"when": "view == tiaProjectExplorer && viewItem == tagTables",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importTagTables",
+					"when": "view == tiaProjectExplorer && viewItem == tagTables",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importTagTables",
+					"when": "view == tiaProjectExplorer && viewItem == tagTableGroup",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importTagTables",
+					"when": "view == tiaProjectExplorer && viewItem == tagTableGroup",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importUdts",
+					"when": "view == tiaProjectExplorer && viewItem == udts",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importUdts",
+					"when": "view == tiaProjectExplorer && viewItem == udts",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importUdts",
+					"when": "view == tiaProjectExplorer && viewItem == udtGroup",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importUdts",
+					"when": "view == tiaProjectExplorer && viewItem == udtGroup",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importWatchTables",
+					"when": "view == tiaProjectExplorer && viewItem == watchTables",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importWatchTables",
+					"when": "view == tiaProjectExplorer && viewItem == watchTables",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importWatchTables",
+					"when": "view == tiaProjectExplorer && viewItem == watchTableGroup",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importWatchTables",
+					"when": "view == tiaProjectExplorer && viewItem == watchTableGroup",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importTagTable",
+					"when": "view == tiaProjectExplorer && viewItem == tagTable",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importTagTable",
+					"when": "view == tiaProjectExplorer && viewItem == tagTable",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importUdt",
+					"when": "view == tiaProjectExplorer && viewItem == udt",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importUdt",
+					"when": "view == tiaProjectExplorer && viewItem == udt",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importWatchTable",
+					"when": "view == tiaProjectExplorer && viewItem == watchTable",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importWatchTable",
+					"when": "view == tiaProjectExplorer && viewItem == watchTable",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importDeviceCategory",
+					"when": "view == tiaProjectExplorer && viewItem == deviceCategory",
+					"group": "inline@1"
+				},
+				{
+					"command": "tia-import.importDeviceCategoryHwConfig",
+					"when": "view == tiaProjectExplorer && viewItem == deviceCategory",
+					"group": "inline@2"
+				},
+				{
+					"command": "tia-import.importDeviceCategory",
+					"when": "view == tiaProjectExplorer && viewItem == deviceCategory",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importDeviceCategoryHwConfig",
+					"when": "view == tiaProjectExplorer && viewItem == deviceCategory",
+					"group": "2_hwconfig"
+				},
+				{
+					"command": "tia-import.importDeviceCategoryHwConfig",
+					"when": "view == tiaProjectExplorer && viewItem == deviceCategoryHwOnly",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importDeviceCategoryHwConfig",
+					"when": "view == tiaProjectExplorer && viewItem == deviceCategoryHwOnly",
+					"group": "1_hwconfig"
+				},
+				{
+					"command": "tia-import.importAllHmi",
+					"when": "view == tiaProjectExplorer && viewItem == hmiSoftware",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importAllHmi",
+					"when": "view == tiaProjectExplorer && viewItem == hmiSoftware",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importHmiScreens",
+					"when": "view == tiaProjectExplorer && viewItem == hmiScreensFolder",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importHmiScreens",
+					"when": "view == tiaProjectExplorer && viewItem == hmiScreensFolder",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importHmiScreens",
+					"when": "view == tiaProjectExplorer && viewItem == hmiScreenGroup",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importHmiScreens",
+					"when": "view == tiaProjectExplorer && viewItem == hmiScreenGroup",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importHmiTags",
+					"when": "view == tiaProjectExplorer && viewItem == hmiTagsFolder",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importHmiTags",
+					"when": "view == tiaProjectExplorer && viewItem == hmiTagsFolder",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importHmiTags",
+					"when": "view == tiaProjectExplorer && viewItem == hmiTagGroup",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importHmiTags",
+					"when": "view == tiaProjectExplorer && viewItem == hmiTagGroup",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importHmiConnections",
+					"when": "view == tiaProjectExplorer && viewItem == hmiConnectionsFolder",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importHmiConnections",
+					"when": "view == tiaProjectExplorer && viewItem == hmiConnectionsFolder",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importLibrary",
+					"when": "view == tiaProjectExplorer && viewItem == libraryRoot",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importLibrary",
+					"when": "view == tiaProjectExplorer && viewItem == libraryRoot",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importLibraryFolder",
+					"when": "view == tiaProjectExplorer && viewItem == libraryTypeFolder",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importLibraryFolder",
+					"when": "view == tiaProjectExplorer && viewItem == libraryTypeFolder",
+					"group": "1_export"
+				},
+				{
+					"command": "tia-import.importLibraryType",
+					"when": "view == tiaProjectExplorer && viewItem == libraryType",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importLibraryType",
+					"when": "view == tiaProjectExplorer && viewItem == libraryType",
+					"group": "1_export"
+				}
+			],
+			"commandPalette": [
+				{
+					"command": "tia-import.previewBlockWithAutomationCompare",
+					"when": "false"
+				},
+				{
+					"command": "tia-import.previewS7dclLadFbd",
+					"when": "false"
+				},
+				{
+					"command": "tia-import.compareS7dclRevisionsInAct",
+					"when": "false"
+				}
+			],
+			"explorer/context": [
+				{
+					"command": "tia-import.previewBlockWithAutomationCompare",
+					"when": "resourceExtname == .xml",
+					"group": "tiaPortalPreview@1"
+				},
+				{
+					"command": "tia-import.previewS7dclLadFbd",
+					"when": "resourceExtname == .s7dcl",
+					"group": "tiaPortalPreview@1"
+				},
+				{
+					"command": "tia-import.compareS7dclRevisionsInAct",
+					"when": "resourceExtname == .s7dcl || resourceExtname == .xml",
+					"group": "tiaPortalPreview@2"
+				},
+				{
+					"command": "tia-import.exportBlockToTia",
+					"when": "resourceExtname == .xml && resourcePath =~ /.*Program.*blocks.*/i",
+					"group": "tiaPortal@1"
+				},
+				{
+					"command": "tia-import.exportBlockToTia",
+					"when": "resourceExtname == .scl",
+					"group": "tiaPortal@1"
+				},
+				{
+					"command": "tia-import.exportBlockToTia",
+					"when": "resourceExtname == .s7dcl",
+					"group": "tiaPortal@1"
+				},
+				{
+					"command": "tia-import.exportBlockToTia",
+					"when": "resourceExtname == .db",
+					"group": "tiaPortal@1"
+				},
+				{
+					"command": "tia-import.exportBlockFolderToTia",
+					"when": "explorerResourceIsFolder && resourcePath =~ /.*Program.*blocks.*/i",
+					"group": "tiaPortal@2"
+				},
+				{
+					"command": "tia-import.exportXmlToTia",
+					"when": "resourceExtname == .xml && !(resourcePath =~ /.*Program.*blocks.*/i) && !(resourcePath =~ /.*[/\\\\]IO_Devices([/\\\\].*)?$/)",
+					"group": "tiaPortal@3"
+				},
+				{
+					"command": "tia-import.exportXmlFolderToTia",
+					"when": "explorerResourceIsFolder && !(resourcePath =~ /.*Program.*blocks.*/i) && !(resourcePath =~ /.*[/\\\\]IO_Devices([/\\\\].*)?$/)",
+					"group": "tiaPortal@4"
+				},
+				{
+					"command": "tia-import.exportXlsxToTia",
+					"when": "resourceExtname == .xlsx && resourcePath =~ /.*PLC.*tags.*/i",
+					"group": "tiaPortal@5"
+				},
+				{
+					"command": "tia-import.exportXlsxFolderToTia",
+					"when": "explorerResourceIsFolder && resourcePath =~ /.*PLC.*tags.*/i",
+					"group": "tiaPortal@6"
+				},
+				{
+					"command": "tia-import.exportHwConfigToTia",
+					"when": "resourceExtname == .xml && resourcePath =~ /.*HwConfig.*|.*DeviceConfiguration.*|.*Devices.*/",
+					"group": "tiaPortalHw@1"
+				},
+				{
+					"command": "tia-import.exportHwConfigToTia",
+					"when": "resourceExtname == .aml",
+					"group": "tiaPortalHw@1"
+				},
+				{
+					"command": "tia-import.exportHwConfigFolderToTia",
+					"when": "explorerResourceIsFolder && resourcePath =~ /.*DeviceConfiguration.*/",
+					"group": "tiaPortalHw@2"
+				},
+				{
+					"command": "tia-import.exportHwConfigFolderToTia",
+					"when": "explorerResourceIsFolder && resourcePath =~ /.*[/\\\\]IO_Devices$/",
+					"group": "tiaPortalHw@2"
+				},
+				{
+					"command": "tia-import.exportHwConfigFolderToTia",
+					"when": "explorerResourceIsFolder && resourcePath =~ /.*Devices[/\\\\](PLCs|HMIs|IO_Devices|Computers)[/\\\\][^/\\\\]+$/",
+					"group": "tiaPortalHw@2"
+				},
+				{
+					"command": "tia-import.exportUnifiedToTia",
+					"when": "explorerResourceIsFolder && resourcePath =~ /.*Devices[/\\\\](PLCs|HMIs|IO_Devices|Computers)[/\\\\][^/\\\\]+$/",
+					"group": "tiaPortal@0"
+				},
+				{
+					"command": "tia-import.exportProgramToTia",
+					"when": "explorerResourceIsFolder && resourcePath =~ /.*Devices[/\\\\](PLCs|HMIs|IO_Devices|Computers)[/\\\\][^/\\\\]+$/",
+					"group": "tiaPortal@1"
+				}
+			]
+		},
+		"chatParticipants": [
+			{
+				"id": "tia.assistant",
+				"name": "tia",
+				"fullName": "TIA Portal Assistant",
+				"description": "Import, export, compile and fix Siemens TIA Portal PLC programs",
+				"isSticky": true
+			}
+		],
+		"languageModelTools": [
+			{
+				"name": "tia_connect",
+				"displayName": "TIA: Connect",
+				"modelDescription": "Connect to TIA Portal. If TIA Portal is already running this attaches to it; otherwise the TIA installation is launched and a project file dialog is shown to the user. Optionally selects a project by name after connecting.",
+				"toolReferenceName": "tiaConnect",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(plug)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"projectName": {
+							"type": "string",
+							"description": "Optional project name to select after connecting."
+						}
+					}
+				}
+			},
+			{
+				"name": "tia_disconnect",
+				"displayName": "TIA: Disconnect",
+				"modelDescription": "Disconnect from TIA Portal.",
+				"toolReferenceName": "tiaDisconnect",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(debug-disconnect)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {}
+				}
+			},
+			{
+				"name": "tia_list_projects",
+				"displayName": "TIA: List Projects",
+				"modelDescription": "List the projects currently open in the connected TIA Portal instance.",
+				"toolReferenceName": "tiaListProjects",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(list-unordered)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {}
+				}
+			},
+			{
+				"name": "tia_select_project",
+				"displayName": "TIA: Select Project",
+				"modelDescription": "Select an open TIA Portal project by name to be the active project for subsequent tools.",
+				"toolReferenceName": "tiaSelectProject",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(folder-opened)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"projectName": {
+							"type": "string",
+							"description": "Project name as returned by tia_list_projects."
+						}
+					},
+					"required": [
+						"projectName"
+					]
+				}
+			},
+			{
+				"name": "tia_list_devices",
+				"displayName": "TIA: List Devices",
+				"modelDescription": "List devices (PLCs/HMIs/IO devices) in the currently selected TIA Portal project.",
+				"toolReferenceName": "tiaListDevices",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(device-desktop)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {}
+				}
+			},
+			{
+				"name": "tia_list_blocks",
+				"displayName": "TIA: List Blocks",
+				"modelDescription": "List program blocks (OB/FB/FC/DB/UDT) on a device. Supports filtering by name and pagination.",
+				"toolReferenceName": "tiaListBlocks",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(file-code)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Device id, technical name or display name."
+						},
+						"nameFilter": {
+							"type": "string",
+							"description": "Optional case-insensitive substring filter on block name."
+						},
+						"limit": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 200
+						},
+						"offset": {
+							"type": "integer",
+							"minimum": 0
+						}
+					},
+					"required": [
+						"device"
+					]
+				}
+			},
+			{
+				"name": "tia_export_block",
+				"displayName": "TIA: Export Block",
+				"modelDescription": "Export a single block from TIA Portal to local files in the workspace TiaExport directory. Format depends on extension settings.",
+				"toolReferenceName": "tiaExportBlock",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(cloud-download)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Device id, technical name or display name."
+						},
+						"block": {
+							"type": "string",
+							"description": "Block id or block name."
+						}
+					},
+					"required": [
+						"device",
+						"block"
+					]
+				}
+			},
+			{
+				"name": "tia_export_device",
+				"displayName": "TIA: Export Device",
+				"modelDescription": "Export every block, tag table, UDT and watch table from a device to local files.",
+				"toolReferenceName": "tiaExportDevice",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(cloud-download)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Device id, technical name or display name."
+						}
+					},
+					"required": [
+						"device"
+					]
+				}
+			},
+			{
+				"name": "tia_export_hw_config",
+				"displayName": "TIA: Export HW Config",
+				"modelDescription": "Export hardware configuration from TIA Portal to the workspace. When `device` is omitted, exports HW config for every device in the project (PLCs, HMIs, IO_Devices). Files land under Devices/<Category>/<DeviceName>/DeviceConfiguration/ (or Devices/IO_Devices/ for IO devices). Format follows tiaImport.hwConfigFormat (xml or cax/AutomationML) unless overridden.",
+				"toolReferenceName": "tiaExportHwConfig",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(circuit-board)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Optional device id, technical name or display name. Omit to export HW config for every device in the project."
+						},
+						"includeChannels": {
+							"type": "boolean",
+							"default": true,
+							"description": "Include I/O channel information."
+						},
+						"includeAddresses": {
+							"type": "boolean",
+							"default": true,
+							"description": "Include I/O module addresses."
+						},
+						"includeNetworkConfig": {
+							"type": "boolean",
+							"default": true,
+							"description": "Include network interfaces and IP addresses."
+						},
+						"includeSubnets": {
+							"type": "boolean",
+							"default": true,
+							"description": "Include subnet information (project-level export only)."
+						},
+						"format": {
+							"type": "string",
+							"enum": [
+								"xml",
+								"cax"
+							],
+							"description": "Override the configured tiaImport.hwConfigFormat."
+						}
+					}
+				}
+			},
+			{
+				"name": "tia_import_file",
+				"displayName": "TIA: Import File",
+				"modelDescription": "Import a single XML / SCL / s7dcl / xlsx file from the workspace into TIA Portal. Overwriting requires user confirmation unless tiaImport.lmTools.autoConfirmImports is enabled.",
+				"toolReferenceName": "tiaImportFile",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(cloud-upload)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Target device id or name."
+						},
+						"filePath": {
+							"type": "string",
+							"description": "Absolute path of the file to import."
+						},
+						"overwriteExisting": {
+							"type": "boolean",
+							"default": true
+						},
+						"compareBeforeImport": {
+							"type": "boolean",
+							"default": false,
+							"description": "Skip import when the existing TIA object is identical."
+						}
+					},
+					"required": [
+						"device",
+						"filePath"
+					]
+				}
+			},
+			{
+				"name": "tia_import_folder",
+				"displayName": "TIA: Import Folder",
+				"modelDescription": "Import every supported file in a workspace folder into TIA Portal. Overwriting requires user confirmation unless tiaImport.lmTools.autoConfirmImports is enabled.",
+				"toolReferenceName": "tiaImportFolder",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(cloud-upload)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Target device id or name."
+						},
+						"folderPath": {
+							"type": "string",
+							"description": "Absolute path of the folder to import."
+						},
+						"overwriteExisting": {
+							"type": "boolean",
+							"default": true
+						},
+						"recursive": {
+							"type": "boolean",
+							"default": true
+						}
+					},
+					"required": [
+						"device",
+						"folderPath"
+					]
+				}
+			},
+			{
+				"name": "tia_import_hw_config",
+				"displayName": "TIA: Import HW Config",
+				"modelDescription": "Push hardware configuration from the workspace into TIA Portal. `path` may be a single .xml/.aml file or a folder (Devices/<Cat>/<Dev>/DeviceConfiguration/ or Devices/IO_Devices/). Format follows tiaImport.hwConfigFormat. Force overwrite requires user confirmation unless tiaImport.lmTools.autoConfirmImports is enabled.",
+				"toolReferenceName": "tiaImportHwConfig",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(circuit-board)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"path": {
+							"type": "string",
+							"description": "Absolute path of HW Config file (.xml/.aml) or folder."
+						},
+						"overwriteExisting": {
+							"type": "boolean",
+							"default": false,
+							"description": "Force overwrite of existing devices. When false (default), differences are compared and only updated entries are imported."
+						},
+						"updateExisting": {
+							"type": "boolean",
+							"default": true
+						},
+						"importNetworkConfig": {
+							"type": "boolean",
+							"default": true
+						},
+						"skipIfIdentical": {
+							"type": "boolean",
+							"default": true
+						},
+						"format": {
+							"type": "string",
+							"enum": [
+								"xml",
+								"cax"
+							],
+							"description": "Override the configured tiaImport.hwConfigFormat."
+						}
+					},
+					"required": [
+						"path"
+					]
+				}
+			},
+			{
+				"name": "tia_export_project",
+				"displayName": "TIA: Export Entire Project",
+				"modelDescription": "Export every device in the project (program blocks, tag tables, UDTs, watch tables) plus optionally HW configuration. Equivalent of the `TIA Import: Import Entire Project` UI command. Files land under TiaExport/Projects/<ProjectName>/Devices/...",
+				"toolReferenceName": "tiaExportProject",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(cloud-download)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"includeHwConfig": {
+							"type": "boolean",
+							"default": true,
+							"description": "Also export HW configuration for every device."
+						},
+						"hwConfigFormat": {
+							"type": "string",
+							"enum": [
+								"xml",
+								"cax"
+							],
+							"description": "Override HW config format for this run."
+						}
+					}
+				}
+			},
+			{
+				"name": "tia_refresh",
+				"displayName": "TIA: Refresh Project Structure",
+				"modelDescription": "Re-read the project structure from TIA Portal (devices, blocks, tag tables, …). Use after the user changed something in TIA Portal between tool calls.",
+				"toolReferenceName": "tiaRefresh",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(refresh)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {}
+				}
+			},
+			{
+				"name": "tia_compile",
+				"displayName": "TIA: Compile",
+				"modelDescription": "Compile PLC software for a device in TIA Portal. Returns counts and the first error / warning messages and publishes diagnostics to the PROBLEMS panel.",
+				"toolReferenceName": "tiaCompile",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(play)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Device id, technical name or display name."
+						}
+					},
+					"required": [
+						"device"
+					]
+				}
+			},
+			{
+				"name": "tia_get_problems",
+				"displayName": "TIA: Get Problems",
+				"modelDescription": "Snapshot of the current TIA-related diagnostics (compile errors and import-time errors). Use this after tia_compile or tia_import_* to obtain file/line information for the model to fix.",
+				"toolReferenceName": "tiaGetProblems",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(warning)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"fileFilter": {
+							"type": "string",
+							"description": "Optional substring filter against the file path."
+						},
+						"severity": {
+							"type": "string",
+							"enum": [
+								"error",
+								"warning",
+								"all"
+							],
+							"default": "all"
+						},
+						"limit": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100,
+							"default": 100
+						}
+					}
+				}
+			},
+			{
+				"name": "tia_fix_compile_errors",
+				"displayName": "TIA: Fix Compile Errors (one step)",
+				"modelDescription": "Performs ONE iteration of the import → compile → diagnostics loop and returns the result so the model can edit local files and call this tool again. Honors tiaImport.lmTools.maxFixIterations to guard against runaway loops.",
+				"toolReferenceName": "tiaFixCompileErrors",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(debug-restart)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Target device id or name."
+						},
+						"importFolder": {
+							"type": "string",
+							"description": "Optional folder to import before compiling."
+						},
+						"importFile": {
+							"type": "string",
+							"description": "Optional single file to import before compiling. Ignored if importFolder is set."
+						},
+						"overwriteExisting": {
+							"type": "boolean",
+							"default": true
+						},
+						"maxIterations": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 20,
+							"description": "Optional per-call cap; the global tiaImport.lmTools.maxFixIterations setting always applies."
+						}
+					},
+					"required": [
+						"device"
+					]
+				}
+			},
+			{
+				"name": "tia_export_cross_references",
+				"displayName": "TIA: Export Cross References",
+				"modelDescription": "Dump the full cross-reference table for a PLC into AI-friendly files. Writes cross-references.jsonl (one JSON record per usage location: symbol, symbolType, symbolPath, usedIn, usedInPath, access, referenceLocation, referenceType, address) plus an optional flat cross-references.csv (RFC 4180, sortable in pandas/Excel) and unused-symbols.csv. Use to find every place a tag/block/DB is used, or to detect dead code. Requires TIA Portal V18+.",
+				"toolReferenceName": "tiaExportCrossReferences",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(references)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Target device id or name. If omitted and the project has exactly one PLC, that PLC is used."
+						},
+						"outputDirectory": {
+							"type": "string",
+							"description": "Optional absolute output directory. Defaults to <workspace>/TiaExport/Projects/<ProjectName>/Devices/PLCs/<Device>/CrossReferences/."
+						},
+						"includeUnused": {
+							"type": "boolean",
+							"default": true,
+							"description": "Also write unused-symbols.csv listing objects with no references."
+						},
+						"includeMarkdown": {
+							"type": "boolean",
+							"default": true,
+							"description": "Also write a flat cross-references.csv (RFC 4180, sortable) alongside the JSONL."
+						}
+					}
+				}
+			}
+		],
+		"configuration": {
+			"title": "TIA Portal Import",
+			"properties": {
+				"tiaImport.tiaPortalVersion": {
+					"type": "integer",
+					"default": 21,
+					"enum": [
+						18,
+						19,
+						20,
+						21
+					],
+					"enumDescriptions": [
+						"TIA Portal V18",
+						"TIA Portal V19",
+						"TIA Portal V20",
+						"TIA Portal V21"
+					],
+					"description": "TIA Portal version to use for Openness API. Changing this requires reloading the extension."
+				},
+				"tiaImport.exportFolderName": {
+					"type": "string",
+					"default": "TiaExport",
+					"description": "Name of the folder in workspace where TIA Portal data will be stored"
+				},
+				"tiaImport.tiaPortalPath": {
+					"type": "string",
+					"default": "",
+					"description": "Path to TIA Portal installation directory. Leave empty to auto-detect based on selected version (C:\\Program Files\\Siemens\\Automation\\Portal V<version>)."
+				},
+				"tiaImport.autoConnect": {
+					"type": "boolean",
+					"default": false,
+					"description": "Automatically connect to TIA Portal on extension activation"
+				},
+				"tiaImport.includeComments": {
+					"type": "boolean",
+					"default": true,
+					"description": "Include comments when exporting blocks"
+				},
+				"tiaImport.exportFormat": {
+					"type": "string",
+					"default": "sd",
+					"enum": [
+						"xml",
+						"sd"
+					],
+					"enumDescriptions": [
+						"SimaticML XML format - standard TIA Portal export format",
+						"SIMATIC Source Documents - auto-selects format by language: SCL blocks → .scl, LAD/FBD blocks → .s7dcl/.s7res"
+					],
+					"description": "Default export format for program blocks"
+				},
+				"tiaImport.dbExportFormat": {
+					"type": "string",
+					"default": "db",
+					"enum": [
+						"xml",
+						"db"
+					],
+					"enumDescriptions": [
+						"SimaticML XML format - standard TIA Portal export (default)",
+						"Source file (.db) - text-based DATA_BLOCK source via GenerateSource API"
+					],
+					"description": "Export format for Global Data Blocks (Instance DBs always use XML)"
+				},
+				"tiaImport.tagTableFormat": {
+					"type": "string",
+					"default": "xlsx",
+					"enum": [
+						"xml",
+						"xlsx"
+					],
+					"enumDescriptions": [
+						"SimaticML XML format (default)",
+						"XLSX spreadsheet format (converts from XML after export)"
+					],
+					"description": "Export format for PLC tag tables"
+				},
+				"tiaImport.hwConfigFormat": {
+					"type": "string",
+					"default": "cax",
+					"enum": [
+						"xml",
+						"cax"
+					],
+					"enumDescriptions": [
+						"Custom HW Config XML produced by the wrapper (default; per-device folders)",
+						"AutomationML / CAx (.aml) via TIA Openness CaxProvider"
+					],
+					"description": "File format used for hardware configuration import (TIA → workspace) and export (workspace → TIA)"
+				},
+				"tiaImport.showImportExportDetails": {
+					"type": "boolean",
+					"default": false,
+					"description": "Show detailed import/export messages in the output log (messages are already shown in real-time during operations)"
+				},
+				"tiaImport.preserveTimestamps": {
+					"type": "boolean",
+					"default": true,
+					"description": "Preserve original timestamps in exported files"
+				},
+				"tiaImport.excludeSystemBlocks": {
+					"type": "boolean",
+					"default": true,
+					"description": "Exclude system blocks from export"
+				},
+				"tiaImport.dotnetPath": {
+					"type": "string",
+					"default": "",
+					"description": "Path to .NET runtime (leave empty for auto-detect)"
+				},
+				"tiaImport.importProgress.itemsPerSecond": {
+					"type": "number",
+					"default": 1,
+					"minimum": 0.1,
+					"maximum": 100,
+					"description": "Speed multiplier for time-based import progress. 1.0 uses built-in artifact weights calibrated by block/export type (SD, SCL/DB source, XML, ACT XML preview, UDT, tag/watch table) and HW Config device imports, plus a 10% safety buffer; increase if your TIA exports faster, decrease if slower."
+				},
+				"tiaImport.s7dclPreviewXml.enabled": {
+					"type": "boolean",
+					"default": true,
+					"description": "When importing blocks from TIA Portal in SD format (.s7dcl/.s7res), additionally write a SimaticML XML mirror under <workspace>/.tiaPreview/ so that the right-click 'TIA Import: LAD/FBD Preview' command can render the block graphically in SIMATIC Automation Compare Tool without re-exporting from TIA Portal."
+				},
+				"tiaImport.automationCompareTool.path": {
+					"type": "string",
+					"default": "",
+					"description": "Path to the SIMATIC Automation Compare Tool executable. Leave empty to auto-detect from common Siemens installation folders and registry entries."
+				},
+				"tiaImport.automationCompareTool.autoDetect": {
+					"type": "boolean",
+					"default": true,
+					"description": "Automatically search for SIMATIC Automation Compare Tool when no explicit executable path is configured."
+				},
+				"tiaImport.automationCompareTool.argumentsTemplate": {
+					"type": "string",
+					"default": "${file}",
+					"description": "Argument template used when external mode launches SIMATIC Automation Compare Tool. Use ${file} for the fully-qualified file path and ${title} for the status-bar title, for example: --uiCulture=en-US --title1 \"${title}\" \"${file}\"."
+				},
+				"tiaImport.automationCompareTool.compareArgumentsTemplate": {
+					"type": "string",
+					"default": "\"${file1}\" \"${file2}\" --title1 \"${title1}\" --title2 \"${title2}\"",
+					"description": "Argument template used when comparing two SimaticML XML files (e.g. two Git revisions) in SIMATIC Automation Compare Tool. Tokens: ${file1}, ${file2}, ${title1}, ${title2}."
+				},
+				"tiaImport.automationCompareTool.embedMode": {
+					"type": "string",
+					"default": "native",
+					"enum": [
+						"external",
+						"native"
+					],
+					"enumDescriptions": [
+						"Open ACT in its own native window (stable fallback).",
+						"Open ACT's installed renderer inside a VS Code webview panel. Falls back to the external ACT window if the renderer files cannot be located."
+					],
+					"description": "How to show SIMATIC Automation Compare Tool previews. Native mode loads ACT's installed renderer in a VS Code webview panel; external mode launches ACT in its own window."
+				},
+				"tiaImport.automationCompareTool.embedTimeoutMs": {
+					"type": "integer",
+					"default": 10000,
+					"minimum": 1000,
+					"maximum": 60000,
+					"description": "Reserved timeout for future ACT native-window fallback behavior. The default VS Code webview preview does not use this value."
+				},
+				"tiaImport.compileAfterExport": {
+					"type": "string",
+					"default": "ask",
+					"enum": [
+						"always",
+						"ask",
+						"never"
+					],
+					"enumDescriptions": [
+						"Always compile PLC software after exporting blocks or program",
+						"Ask whether to compile after each export (default)",
+						"Never compile after export"
+					],
+					"description": "Whether to compile PLC software in TIA Portal after exporting blocks or program (does not apply to HW config export)"
+				},
+				"tiaImport.autoExportCrossReferences": {
+					"type": "string",
+					"enum": [
+						"always",
+						"ask",
+						"never"
+					],
+					"default": "ask",
+					"enumDescriptions": [
+						"Always dump cross-references after every device/project import (no prompt)",
+						"Ask per PLC when the dump is about to start; auto-skips after 5s if you don't respond (default)",
+						"Never dump cross-references automatically"
+					],
+					"description": "Whether to dump the cross-reference table (cross-references.jsonl + CSV) into <Device>/CrossReferences/ after a device or project import. Requires TIA Portal V18+. ⚠️ Generating cross-references is performed by TIA Portal itself and can take several minutes — 10 min+ on large PLCs (thousands of blocks / fault-tolerant projects)."
+				},
+				"tiaImport.lmTools.autoConfirmImports": {
+					"type": "boolean",
+					"default": false,
+					"description": "When enabled, the Copilot tia_import_* tools no longer ask for confirmation before overwriting objects in TIA Portal."
+				},
+				"tiaImport.lmTools.maxFixIterations": {
+					"type": "integer",
+					"default": 5,
+					"minimum": 1,
+					"maximum": 20,
+					"description": "Maximum number of import → compile → fix iterations the tia_fix_compile_errors Copilot tool will run before giving up."
+				}
+			}
+		}
+	},
+	"scripts": {
+		"vscode:prepublish": "npm run build:dotnet && npm run compile",
+		"precompile": "node scripts/bump-version.js",
+		"compile": "tsc -p ./",
+		"watch": "tsc -watch -p ./",
+		"test:method-parity": "node scripts/test-method-parity.js",
+		"test:unit": "mocha",
+		"test:dotnet": "dotnet test ./dotnet/TiaOpennessWrapper.Tests/TiaOpennessWrapper.Tests.csproj -c Release",
+		"test:dotnet:integration": "dotnet test ./dotnet/TiaOpennessWrapper.IntegrationTests/TiaOpennessWrapper.IntegrationTests.csproj -c Release",
+		"pretest": "tsc -p ./ && npm run lint",
+		"lint": "eslint src --ext ts",
+		"test": "npm run test:method-parity && npm run test:unit",
+		"test:all": "npm run test:unit && npm run test:dotnet && npm run test:method-parity",
+		"build:dotnet": "node scripts/build-dotnet.js",
+		"package": "vsce package"
+	},
+	"devDependencies": {
+		"@types/mocha": "^10.0.7",
+		"@types/node": "^25.2.3",
+		"@types/vscode": "^1.95.0",
+		"@typescript-eslint/eslint-plugin": "^8.55.1-alpha.4",
+		"@typescript-eslint/parser": "^8.55.1-alpha.4",
+		"@vscode/test-electron": "^2.x",
+		"@vscode/vsce": "^3.7.1",
+		"eslint": "^10.0.0",
+		"mocha": "^10.7.0",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.x"
+	},
+	"dependencies": {
+		"edge-js": "^25.0.1",
+		"electron-edge-js": "^40.0.1",
+		"xml2js": "^0.6.x"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/cmariusz/TiaImportExport.VSExt"
+	},
+	"__metadata": {
+		"installedTimestamp": 1778569056571,
+		"targetPlatform": "undefined",
+		"size": 144701958
+	}
+}

@@ -1,17 +1,17 @@
 # TIA Portal Import — VS Code Extension
 
 <!-- VERSION-BADGE -->
-[![Version](https://img.shields.io/badge/version-2.0.100-blue)](package.json)
+[![Version](https://img.shields.io/badge/version-2.0.106-blue)](https://github.com/cmariusz/TiaImportExport.VSExt/blob/HEAD/package.json)
 <!-- /VERSION-BADGE -->
 
 [![VS Code](https://img.shields.io/badge/VS%20Code-%3E%3D1.80.0-blue?logo=visualstudiocode)](https://code.visualstudio.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/cmariusz/TiaImportExport.VSExt/blob/HEAD/LICENSE)
 [![Platform: Windows](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows)](https://www.microsoft.com/windows)
 [![Author](https://img.shields.io/badge/Author-Mariusz%20Czyrnek-orange?logo=linkedin)](https://www.linkedin.com/in/mariusz-czyrnek-a33b87a6)
 
 **Bidirectional bridge between VS Code and Siemens TIA Portal** — import PLC/HMI projects from TIA Portal to local files, edit them with full VS Code + Copilot power, and export changes back. Built on the TIA Portal Openness API.
 
-![TIA Portal Import Overview](Screenshots/Overview.png)
+![TIA Portal Import Overview](https://github.com/cmariusz/TiaImportExport.VSExt/raw/HEAD/Screenshots/Overview.png)
 
 ---
 
@@ -63,6 +63,7 @@
 - **Instance DB creation** — creates Instance DBs directly via API (no XML import needed)
 - **Cancellation support** — cancel long-running operations via VS Code progress UI
 - **Status bar** — real-time connection state and project info
+- **Time-based import progress** — long-running project, device, device-category, and category HW Config imports show a live numeric percentage, weighted work counter, and ETA in both the notification progress UI and the status bar; block imports are weighted by export type (SD, SCL/DB source, XML, ACT XML preview, UDTs, tag/watch tables) and category HW Config imports are weighted per device with a small safety buffer so very large TIA exports do not look stalled
 - **Compile after export** — optional PLC software compilation in TIA Portal after each export (Always / Ask / Never); results shown in OUTPUT panel
 - **Compile error tracking** — compile errors and warnings mapped to VS Code PROBLEMS panel with automatic file matching, network-to-line resolution (XML, S7DCL, SCL), and direct navigation to the error location
 
@@ -138,6 +139,7 @@ Imports that overwrite existing TIA objects show a confirmation dialog unless `t
    - **HMI** — import screens, tags, and/or connections
    - **HW Config** — import hardware configuration
 4. Files are saved under `TiaExport/Projects/<ProjectName>/Devices/` in your workspace
+5. Long-running imports show a time-based progress indicator with percentage, ETA and a numeric `work` counter. Tune the pacing with `tiaImport.importProgress.itemsPerSecond` if your TIA environment is noticeably faster or slower than the default calibration.
 
 ### Exporting to TIA Portal
 
@@ -256,6 +258,7 @@ On first connection to TIA Portal (or when you run `TIA Import: Prepare Workspac
 | `tiaImport.dotnetPath`                | Path to .NET runtime                                                                                                                                                                                                                                                                                                                                                                     | Auto-detect          |
 | `tiaImport.dbExportFormat`            | Global DB export format (`xml` / `db`)                                                                                                                                                                                                                                                                                                                                               | `db`               |
 | `tiaImport.showImportExportDetails`   | Show detailed import/export messages in the output log                                                                                                                                                                                                                                                                                                                                   | `false`            |
+| `tiaImport.importProgress.itemsPerSecond` | Speed multiplier for the time-based import progress model used by project/device/category and category HW Config imports. `1.0` uses the built-in weighted calibration plus a 10% safety buffer; increase it if your TIA exports are faster, decrease it if they are slower.                                                                                                                                              | `1`                |
 | `tiaImport.compileAfterExport`        | Compile PLC software after export (`always` / `ask` / `never`)                                                                                                                                                                                                                                                                                                                     | `ask`              |
 | `tiaImport.autoExportCrossReferences` | Generate cross-reference dump after import (`always` / `ask` / `never`). In `ask` mode the prompt is shown **per PLC** when the dump is about to start and auto-skips after **5 s** if you don't respond. ⚠️ Building the table can take **several minutes — 10 min+ on large PLCs** because TIA Portal computes it itself. Default is therefore `ask`. | `ask`              |
 
@@ -389,16 +392,16 @@ The extension uses **electron-edge-js** to call the .NET `TiaOpennessWrapper.dll
 ## Documentation
 
 - [TIA Portal Openness API (Siemens)](https://docs.tia.siemens.cloud/r/en-us/v21/tia-portal-openness-api-for-automation-of-engineering-workflows) — official Openness API documentation
-- [Documentation/API/](Documentation/API/) — XML intellisense files for the Openness API
-- [Documentation/Schemas/](Documentation/Schemas/) — SimaticML XSD schemas for all block types
-- [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) — third-party components and redistribution notes
+- [Documentation/API/](https://github.com/cmariusz/TiaImportExport.VSExt/blob/HEAD/Documentation/API/) — XML intellisense files for the Openness API
+- [Documentation/Schemas/](https://github.com/cmariusz/TiaImportExport.VSExt/blob/HEAD/Documentation/Schemas/) — SimaticML XSD schemas for all block types
+- [THIRD_PARTY_NOTICES.md](https://github.com/cmariusz/TiaImportExport.VSExt/blob/HEAD/THIRD_PARTY_NOTICES.md) — third-party components and redistribution notes
 
 ---
 
 ## Third-Party Licensing & Redistribution
 
-- This extension code is released under [MIT](LICENSE).
-- Third-party notices for npm/NuGet components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+- This extension code is released under [MIT](https://github.com/cmariusz/TiaImportExport.VSExt/blob/HEAD/LICENSE).
+- Third-party notices for npm/NuGet components are listed in [THIRD_PARTY_NOTICES.md](https://github.com/cmariusz/TiaImportExport.VSExt/blob/HEAD/THIRD_PARTY_NOTICES.md).
 - For Siemens Openness components, use and distribution are subject to Siemens package terms; evaluate those terms for your release scenario.
 - Do **not** bundle or redistribute `Siemens.Engineering.*` binaries with this extension unless explicitly allowed by Siemens terms.
 - End users must provide their own licensed TIA Portal installation and Openness entitlement.
@@ -488,4 +491,4 @@ Every shared script or instruction improves the experience for all users. Don't 
 
 ## License
 
-[MIT](LICENSE) — Copyright (c) 2026 Mariusz Czyrnek
+[MIT](https://github.com/cmariusz/TiaImportExport.VSExt/blob/HEAD/LICENSE) — Copyright (c) 2026 Mariusz Czyrnek

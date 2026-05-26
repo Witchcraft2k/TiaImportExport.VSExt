@@ -1,0 +1,83 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <OutputType>Library</OutputType>
+    <RootNamespace>TiaOpennessWrapper</RootNamespace>
+    <AssemblyName>TiaOpennessWrapper</AssemblyName>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <PlatformTarget>x64</PlatformTarget>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Define SIEMENS_ENGINEERING to enable real TIA Portal API -->
+    <DefineConstants>$(DefineConstants);SIEMENS_ENGINEERING</DefineConstants>
+
+    <!--
+      Major TIA Portal version to compile against. Override on the command line:
+        dotnet build /p:OpennessTiaMajor=19
+        dotnet build /p:OpennessTiaMajor=20
+        dotnet build /p:OpennessTiaMajor=21   (default)
+      Each target version produces a separate binary in bin\$(Configuration)\net48\V$(OpennessTiaMajor)\
+      so the VS Code extension can load the correct DLL at runtime.
+    -->
+    <OpennessTiaMajor Condition="'$(OpennessTiaMajor)' == ''">21</OpennessTiaMajor>
+
+    <!-- Avoid double-nested folder (bin\Release\net48\V21\net48\) -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+
+    <!--
+      SD format (PlcBlock.ExportAsDocuments / PlcBlockComposition.ImportFromDocuments)
+      requires TIA Portal V20+. Conditionally exclude SD code paths for V19 builds.
+    -->
+    <DefineConstants Condition="$(OpennessTiaMajor) &gt;= 20">$(DefineConstants);SUPPORTS_SD_FORMAT</DefineConstants>
+    <DefineConstants Condition="$(OpennessTiaMajor) &gt;= 21">$(DefineConstants);SUPPORTS_HMI_CHROM_EXPORT</DefineConstants>
+
+    <!--
+      Local fallback for Siemens.Engineering reference assemblies.
+      The Siemens NuGet (Packages.Openness) resolves Siemens.Engineering*.dll from
+      the locally installed TIA Portal (registry-based lookup). To build a wrapper
+      for a TIA major version that is NOT installed on this machine, drop the matching
+      reference assemblies (Siemens.Engineering.dll, Siemens.Engineering.Hmi.dll,
+      Siemens.Engineering.AddIn.dll, Siemens.Engineering.Contract.dll, plus Base.dll
+      family on V21) into:
+          dotnet/refs/V<n>/
+      and the build will pick them up via the TiaPortalLocation property exposed by
+      the Siemens build targets. Only set TiaPortalLocation when the folder exists,
+      otherwise fall back to the locally installed TIA Portal lookup.
+    -->
+    <_LocalTiaRefDir>$(MSBuildThisFileDirectory)..\refs\V$(OpennessTiaMajor)\</_LocalTiaRefDir>
+    <SiemensEngineeringDirectory Condition="Exists('$(_LocalTiaRefDir)') AND '$(SiemensEngineeringDirectory)' == ''">$(_LocalTiaRefDir.TrimEnd('\'))</SiemensEngineeringDirectory>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <OutputPath>bin\Debug\net48\V$(OpennessTiaMajor)\</OutputPath>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <OutputPath>bin\Release\net48\V$(OpennessTiaMajor)\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+    TIA Portal Openness NuGet packages from Siemens.
+
+    The reference assemblies for Siemens.Engineering.* are NOT shipped inside
+    the NuGet package. The package only emits MSBuild targets that resolve them
+    from the locally installed TIA Portal:
+      C:\Program Files\Siemens\Automation\Portal V<n>\PublicAPI\V<n>\net48\
+    This means a wrapper compiled against V21 references Siemens.Engineering.Base
+    (which only exists on V21), while V19/V20 ship a single Siemens.Engineering.dll.
+    Therefore we build one binary per supported TIA major version (V19/V20/V21).
+
+    The matching package major version is selected via $(OpennessTiaMajor).
+    -->
+    <PackageReference Include="Siemens.Collaboration.Net.TiaPortal.Packages.Openness" Version="$(OpennessTiaMajor).*" />
+    <PackageReference Include="Siemens.Collaboration.Net.TiaPortal.Openness.Resolver" Version="*" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+    <PackageReference Include="ClosedXML" Version="0.95.4" />
+  </ItemGroup>
+
+</Project>
