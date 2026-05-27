@@ -24,6 +24,10 @@
     -->
     <OpennessTiaMajor Condition="'$(OpennessTiaMajor)' == ''">21</OpennessTiaMajor>
 
+    <!-- Keep NuGet restore state separate per target version. -->
+    <BaseIntermediateOutputPath Condition="'$(BaseIntermediateOutputPath)' == ''">obj\V$(OpennessTiaMajor)\</BaseIntermediateOutputPath>
+    <MSBuildProjectExtensionsPath Condition="'$(MSBuildProjectExtensionsPath)' == ''">$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
+
     <!-- Avoid double-nested folder (bin\Release\net48\V21\net48\) -->
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
 
@@ -48,7 +52,12 @@
       otherwise fall back to the locally installed TIA Portal lookup.
     -->
     <_LocalTiaRefDir>$(MSBuildThisFileDirectory)..\refs\V$(OpennessTiaMajor)\</_LocalTiaRefDir>
-    <SiemensEngineeringDirectory Condition="Exists('$(_LocalTiaRefDir)') AND '$(SiemensEngineeringDirectory)' == ''">$(_LocalTiaRefDir.TrimEnd('\'))</SiemensEngineeringDirectory>
+    <_ResolvedSiemensEngineeringDirectory Condition="Exists('$(_LocalTiaRefDir)')">$([System.IO.Path]::GetFullPath('$(_LocalTiaRefDir)').TrimEnd('\'))</_ResolvedSiemensEngineeringDirectory>
+    <_ResolvedSiemensEngineeringDirectory Condition="'$(_ResolvedSiemensEngineeringDirectory)' == '' AND '$(OpennessTiaMajor)' == '18' AND Exists('C:\Program Files\Siemens\Automation\Portal V19\PublicAPI\V18')">C:\Program Files\Siemens\Automation\Portal V19\PublicAPI\V18</_ResolvedSiemensEngineeringDirectory>
+    <_ResolvedSiemensEngineeringDirectory Condition="'$(_ResolvedSiemensEngineeringDirectory)' == '' AND '$(OpennessTiaMajor)' == '19' AND Exists('C:\Program Files\Siemens\Automation\Portal V19\PublicAPI\V19')">C:\Program Files\Siemens\Automation\Portal V19\PublicAPI\V19</_ResolvedSiemensEngineeringDirectory>
+    <_ResolvedSiemensEngineeringDirectory Condition="'$(_ResolvedSiemensEngineeringDirectory)' == '' AND '$(OpennessTiaMajor)' == '20' AND Exists('C:\Program Files\Siemens\Automation\Portal V20\PublicAPI\V20')">C:\Program Files\Siemens\Automation\Portal V20\PublicAPI\V20</_ResolvedSiemensEngineeringDirectory>
+    <_ResolvedSiemensEngineeringDirectory Condition="'$(_ResolvedSiemensEngineeringDirectory)' == '' AND '$(OpennessTiaMajor)' == '21' AND Exists('C:\Program Files\Siemens\Automation\Portal V21\PublicAPI\V21\net48')">C:\Program Files\Siemens\Automation\Portal V21\PublicAPI\V21\net48</_ResolvedSiemensEngineeringDirectory>
+    <SiemensEngineeringDirectory Condition="'$(SiemensEngineeringDirectory)' == '' AND '$(_ResolvedSiemensEngineeringDirectory)' != ''">$(_ResolvedSiemensEngineeringDirectory)</SiemensEngineeringDirectory>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -78,6 +87,14 @@
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
     <PackageReference Include="ClosedXML" Version="0.95.4" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(SiemensEngineeringDirectory)' != '' AND Exists('$(SiemensEngineeringDirectory)')">
+    <_ExplicitSiemensReference Include="$(SiemensEngineeringDirectory)\*.dll" />
+    <Reference Include="@(_ExplicitSiemensReference->'%(Filename)')">
+      <HintPath>%(_ExplicitSiemensReference.Identity)</HintPath>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
 </Project>
