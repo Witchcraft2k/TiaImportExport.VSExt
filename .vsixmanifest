@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 	<PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
 		<Metadata>
-			<Identity Language="en-US" Id="tia-import" Version="2.0.106" Publisher="MariuszCzyrnek" />
+			<Identity Language="en-US" Id="tia-import" Version="2.0.148" Publisher="MariuszCzyrnek" />
 			<DisplayName>TIA Portal Import</DisplayName>
 			<Description xml:space="preserve">Import/export PLC programs from/to Siemens TIA Portal using TIA Portal Openness API</Description>
 			<Tags>siemens,tia portal,tiaportal,tia-portal,plc,openness,automation,siemens AI,tia portal AI,tiaportal AI,tia-portal AI,plc AI,openness AI,automation AI,tia portal copilot,tiaportal copilot,tia-portal copilot,plc copilot,openness copilot,automation copilot,chat-participant,tools,language-model-tools</Tags>

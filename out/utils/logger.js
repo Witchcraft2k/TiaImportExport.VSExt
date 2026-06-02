@@ -175,6 +175,135 @@ class LoggerService {
         this.logMessages(messages, 'Import');
     }
     /**
+     * Log warnings/errors returned by the .NET wrapper and TIA Openness.
+     * This is intentionally gated by Log Details so normal logs stay compact.
+     */
+    logWrapperDiagnostics(method, payload) {
+        if (!(0, config_1.getConfig)().showImportExportDetails) {
+            return;
+        }
+        if (!payload || typeof payload !== 'object') {
+            return;
+        }
+        const data = payload;
+        const messages = Array.isArray(data.messages)
+            ? data.messages.filter(message => this.isWarningOrErrorMessage(message))
+            : [];
+        const errors = Array.isArray(data.errors) ? data.errors : [];
+        const error = this.nonEmptyText(data.error);
+        const details = this.nonEmptyText(data.details);
+        const state = this.nonEmptyText(data.state);
+        const errorCount = this.asNumber(data.errorCount);
+        const warningCount = this.asNumber(data.warningCount);
+        const hasDiagnosticState = this.isWarningOrErrorText(state) || errorCount > 0 || warningCount > 0;
+        if (!error && !details && messages.length === 0 && errors.length === 0 && !hasDiagnosticState) {
+            return;
+        }
+        this.outputChannel.info('');
+        this.outputChannel.info(`─────────────── Wrapper/TIA Details: ${method} ───────────────`);
+        if (state || errorCount > 0 || warningCount > 0) {
+            const parts = [];
+            if (state) {
+                parts.push(`state=${state}`);
+            }
+            if (errorCount > 0) {
+                parts.push(`errors=${errorCount}`);
+            }
+            if (warningCount > 0) {
+                parts.push(`warnings=${warningCount}`);
+            }
+            const level = errorCount > 0 || this.isErrorText(state) ? 'error' : 'warn';
+            this.writeDiagnostic(level, `Summary: ${parts.join(', ')}`);
+        }
+        if (error) {
+            this.writeDiagnostic('error', `Error: ${this.fixFilePathLinks(error)}`);
+        }
+        if (details) {
+            this.writeDiagnosticBlock('error', 'Details', details);
+        }
+        for (const message of messages) {
+            this.writeWrapperMessage(message);
+        }
+        for (const item of errors) {
+            this.writeDiagnostic('error', `Error: ${this.fixFilePathLinks(this.formatData(item))}`);
+        }
+        this.outputChannel.info(`───────────────────────────────────────────────`);
+    }
+    writeWrapperMessage(message) {
+        if (!message || typeof message !== 'object') {
+            this.writeDiagnostic('error', `Error: ${this.fixFilePathLinks(this.formatData(message))}`);
+            return;
+        }
+        const data = message;
+        const severity = this.nonEmptyText(data.type) || this.nonEmptyText(data.state) || 'error';
+        const level = this.isErrorText(severity) ? 'error' : 'warn';
+        const label = this.formatDiagnosticLabel(data);
+        const text = this.nonEmptyText(data.message) || this.nonEmptyText(data.description) || this.formatData(message);
+        const prefix = level === 'error' ? 'Error' : 'Warning';
+        this.writeDiagnostic(level, `${prefix}: ${label ? `${label} - ` : ''}${this.fixFilePathLinks(text)}`);
+        const details = this.nonEmptyText(data.details);
+        if (details) {
+            this.writeDiagnosticBlock(level, 'Details', details);
+        }
+        const path = this.nonEmptyText(data.filePath) || this.nonEmptyText(data.path);
+        if (path) {
+            this.writeDiagnostic(level, `  File: ${this.formatFilePath(path)}`);
+        }
+    }
+    formatDiagnosticLabel(data) {
+        const itemType = this.nonEmptyText(data.itemType);
+        const itemName = this.nonEmptyText(data.itemName);
+        const path = this.nonEmptyText(data.path);
+        if (itemType && itemName) {
+            return `${itemType}: ${itemName}`;
+        }
+        return itemName || itemType || path || '';
+    }
+    writeDiagnosticBlock(level, label, value) {
+        this.writeDiagnostic(level, `${label}:`);
+        const lines = value.split(/\r?\n/).filter(line => line.trim().length > 0);
+        for (const line of lines) {
+            this.writeDiagnostic(level, `  ${this.fixFilePathLinks(line.trim())}`);
+        }
+    }
+    writeDiagnostic(level, message) {
+        if (level === 'error') {
+            this.outputChannel.error(message);
+        }
+        else if (level === 'warn') {
+            this.outputChannel.warn(message);
+        }
+        else {
+            this.outputChannel.info(message);
+        }
+    }
+    isWarningOrErrorMessage(message) {
+        if (!message || typeof message !== 'object') {
+            return false;
+        }
+        const data = message;
+        const severity = this.nonEmptyText(data.type) || this.nonEmptyText(data.state);
+        return this.isWarningOrErrorText(severity)
+            || this.asNumber(data.errorCount) > 0
+            || this.asNumber(data.warningCount) > 0;
+    }
+    isWarningOrErrorText(value) {
+        return this.isErrorText(value) || value.toLowerCase().includes('warning') || value.toLowerCase() === 'warn';
+    }
+    isErrorText(value) {
+        return value.toLowerCase().includes('error') || value.toLowerCase() === 'failed';
+    }
+    nonEmptyText(value) {
+        if (typeof value !== 'string') {
+            return '';
+        }
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : '';
+    }
+    asNumber(value) {
+        return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+    }
+    /**
      * Format a file path for display in the output channel.
      * Wraps paths containing spaces in double quotes so VS Code can detect them as clickable links.
      */

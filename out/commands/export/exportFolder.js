@@ -332,7 +332,7 @@ async function exportMultipleFoldersCore(connectionService, config, uris) {
             return;
         }
         const folderPaths = uris.map(u => u.fsPath);
-        const devices = (0, exportDialogs_1.validateProjectDevices)(connectionService);
+        const devices = (0, exportDialogs_1.validateProjectPlcDevices)(connectionService);
         if (!devices) {
             return;
         }
@@ -452,7 +452,7 @@ async function exportFolderCore(connectionService, config, uri) {
         if (!folderPath) {
             return;
         }
-        const devices = (0, exportDialogs_1.validateProjectDevices)(connectionService);
+        const devices = (0, exportDialogs_1.validateProjectPlcDevices)(connectionService);
         if (!devices) {
             return;
         }

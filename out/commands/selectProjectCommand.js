@@ -61,7 +61,7 @@ async function selectProjectCommand(connectionService, projectTreeProvider) {
         });
         if (selected) {
             logger_1.Logger.info(`User selected: ${selected.label}`);
-            await connectionService.selectProject(selected.project.id || selected.project.name);
+            await connectionService.selectProject(selected.project.name);
             projectTreeProvider.refresh();
             logger_1.Logger.success(`Project "${selected.label}" loaded successfully`);
             vscode.window.showInformationMessage(`TIA Import: Selected project "${selected.label}"`);

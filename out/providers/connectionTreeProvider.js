@@ -100,11 +100,16 @@ class TiaConnectionTreeProvider {
             return [];
         }
         const items = [];
+        const config = (0, config_1.getConfig)();
         // TIA Portal version selector (always visible; version is chosen before connecting)
-        const versionConfig = (0, config_1.getConfig)();
-        items.push(new ConnectionTreeItem('TIA Portal', `V${versionConfig.tiaPortalVersion}`, 'versions', 'tiaPortalVersion', {
+        items.push(new ConnectionTreeItem('TIA Portal', `V${config.tiaPortalVersion}`, 'versions', 'tiaPortalVersion', {
             command: 'tia-import.selectTiaPortalVersion',
             title: 'Select TIA Portal Version'
+        }));
+        // Diagnostic logging toggle (always visible; useful before connecting too)
+        items.push(new ConnectionTreeItem('Log Details', config.showImportExportDetails ? 'On' : 'Off', 'output', 'showImportExportDetails', {
+            command: 'tia-import.toggleShowImportExportDetails',
+            title: 'Toggle Log Details'
         }));
         // Connection status
         if (this._connectionService.isConnected) {
@@ -123,7 +128,6 @@ class TiaConnectionTreeProvider {
                 const devices = this._connectionService.getDevices();
                 items.push(new ConnectionTreeItem('Devices', `${devices.length} device(s)`, 'server'));
                 // Export format
-                const config = (0, config_1.getConfig)();
                 const formatLabels = {
                     'xml': 'XML (SimaticML)',
                     'sd': 'Auto (SCL→.scl, LAD/FBD→.s7dcl)'
@@ -176,11 +180,6 @@ class TiaConnectionTreeProvider {
                 items.push(new ConnectionTreeItem('Compile after Export', compileLabels[compileSetting] || compileSetting, 'gear', 'compileAfterExport', {
                     command: 'tia-import.toggleCompileAfterExport',
                     title: 'Compile after Export'
-                }));
-                // Show import/export details toggle
-                items.push(new ConnectionTreeItem('Log Details', config.showImportExportDetails ? 'On' : 'Off', 'output', 'showImportExportDetails', {
-                    command: 'tia-import.toggleShowImportExportDetails',
-                    title: 'Toggle Import/Export Details'
                 }));
                 // Auto-export cross references (always / ask / never)
                 const xrefLabels = { always: 'Always', ask: 'Ask', never: 'Never' };

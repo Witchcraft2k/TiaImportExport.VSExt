@@ -77,7 +77,7 @@ async function exportXlsxToTiaCommand(connectionService, uri, uris) {
             vscode.window.showWarningMessage('XLSX export to TIA: No XLSX files found');
             return;
         }
-        const devices = (0, exportDialogs_1.validateProjectDevices)(connectionService);
+        const devices = (0, exportDialogs_1.validateProjectPlcDevices)(connectionService);
         if (!devices) {
             return;
         }
@@ -180,7 +180,7 @@ async function exportXlsxFolderToTiaCommand(connectionService, uri) {
             }
             folderPath = folders[0].fsPath;
         }
-        const devices = (0, exportDialogs_1.validateProjectDevices)(connectionService);
+        const devices = (0, exportDialogs_1.validateProjectPlcDevices)(connectionService);
         if (!devices) {
             return;
         }

@@ -258,8 +258,9 @@ class ProjectImportService {
             // Get device category folder (PLCs, HMIs, or IO_Devices)
             const categoryFolder = (0, pathBuilder_1.getDeviceCategoryFolder)(device.type);
             const devicePath = path.join(exportPath, 'Devices', categoryFolder, deviceFolderName);
-            // Create device directory structure
-            await fs.promises.mkdir(devicePath, { recursive: true });
+            if (categoryFolder !== 'IO_Devices' || device.plcSoftware.length > 0) {
+                await fs.promises.mkdir(devicePath, { recursive: true });
+            }
             // DeviceInfo.xml export disabled - not needed
             // await this.exportDeviceInfo(device, devicePath);
             let itemCount = 0;

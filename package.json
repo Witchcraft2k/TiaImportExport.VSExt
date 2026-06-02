@@ -2,7 +2,7 @@
 	"name": "tia-import",
 	"displayName": "TIA Portal Import",
 	"description": "Import/export PLC programs from/to Siemens TIA Portal using TIA Portal Openness API",
-	"version": "2.0.106",
+	"version": "2.0.148",
 	"license": "MIT",
 	"publisher": "MariuszCzyrnek",
 	"author": "Mariusz Czyrnek",
@@ -1370,7 +1370,7 @@
 				"tiaImport.showImportExportDetails": {
 					"type": "boolean",
 					"default": false,
-					"description": "Show detailed import/export messages in the output log (messages are already shown in real-time during operations)"
+					"description": "Show detailed import/export messages plus wrapper and TIA Openness warnings/errors in the output log"
 				},
 				"tiaImport.preserveTimestamps": {
 					"type": "boolean",
@@ -1498,7 +1498,8 @@
 		"test": "npm run test:method-parity && npm run test:unit",
 		"test:all": "npm run test:unit && npm run test:dotnet && npm run test:method-parity",
 		"build:dotnet": "node scripts/build-dotnet.js",
-		"package": "vsce package"
+		"package": "node scripts/package-vsix.js",
+		"release:vsix": "node scripts/release-vsix.js"
 	},
 	"devDependencies": {
 		"@types/mocha": "^10.0.7",
@@ -1523,8 +1524,8 @@
 		"url": "https://github.com/cmariusz/TiaImportExport.VSExt"
 	},
 	"__metadata": {
-		"installedTimestamp": 1778569056571,
+		"installedTimestamp": 1780376650966,
 		"targetPlatform": "undefined",
-		"size": 144701958
+		"size": 68703337
 	}
 }

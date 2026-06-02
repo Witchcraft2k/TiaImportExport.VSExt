@@ -35,6 +35,8 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ensureConnection = ensureConnection;
 exports.validateProjectDevices = validateProjectDevices;
+exports.isPlcDevice = isPlcDevice;
+exports.validateProjectPlcDevices = validateProjectPlcDevices;
 exports.pickDevice = pickDevice;
 exports.pickOverwriteMode = pickOverwriteMode;
 exports.pickSingleFile = pickSingleFile;
@@ -71,6 +73,29 @@ function validateProjectDevices(connectionService) {
         return undefined;
     }
     return project.devices;
+}
+/**
+ * Returns true when a device has PLC software and can be used as a target
+ * for PLC artifacts such as blocks, UDTs, tags and watch tables.
+ */
+function isPlcDevice(device) {
+    return Array.isArray(device.plcSoftware) && device.plcSoftware.length > 0;
+}
+/**
+ * Validate that the project has PLC devices available for PLC artifact export.
+ * Returns only PLC-capable devices, excluding HMI and hardware-only devices.
+ */
+function validateProjectPlcDevices(connectionService) {
+    const devices = validateProjectDevices(connectionService);
+    if (!devices) {
+        return undefined;
+    }
+    const plcDevices = devices.filter(isPlcDevice);
+    if (plcDevices.length === 0) {
+        vscode.window.showWarningMessage('Export to TIA Portal: No PLC devices in TIA Portal project');
+        return undefined;
+    }
+    return plcDevices;
 }
 /**
  * Show device picker and return selected device info.

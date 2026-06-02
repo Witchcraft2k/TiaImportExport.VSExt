@@ -273,7 +273,8 @@ class TiaConnectionService {
                 }
                 return true;
             }
-            logger_1.Logger.warn(`Project "${projectName}" not found or could not be selected`);
+            const reason = result.error ? `: ${result.error}` : '';
+            logger_1.Logger.warn(`Project "${projectName}" not found or could not be selected${reason}`);
             return false;
         }
         catch (error) {

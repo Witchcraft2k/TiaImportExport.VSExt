@@ -170,7 +170,7 @@ async function exportUnifiedMultiCore(connectionService, config, uris) {
             return;
         }
         const folderPaths = uris.map(u => u.fsPath);
-        const devices = (0, exportDialogs_1.validateProjectDevices)(connectionService);
+        const devices = (0, exportDialogs_1.validateProjectPlcDevices)(connectionService);
         if (!devices) {
             return;
         }
@@ -261,7 +261,7 @@ async function exportUnifiedCore(connectionService, config, uri) {
             }
         }
         // For PLC device folder, ask user for device
-        const devices = (0, exportDialogs_1.validateProjectDevices)(connectionService);
+        const devices = (0, exportDialogs_1.validateProjectPlcDevices)(connectionService);
         if (!devices) {
             return;
         }

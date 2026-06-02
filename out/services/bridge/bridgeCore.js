@@ -170,6 +170,7 @@ class BridgeCore {
                 else {
                     // Convert PascalCase to camelCase for TypeScript compatibility
                     const converted = this.toCamelCase(result);
+                    logger_1.Logger.logWrapperDiagnostics(method, converted);
                     resolve(converted);
                 }
             });
@@ -195,6 +196,11 @@ class BridgeCore {
         }
         catch (error) {
             logger_1.Logger.error(`Bridge: ${logLabel}`, error);
+            logger_1.Logger.logWrapperDiagnostics(method, {
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+                details: error instanceof Error ? error.stack : undefined
+            });
             return {
                 success: false,
                 error: error instanceof Error ? error.message : String(error)

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.detectPlcFolders = exports.detectPlcFolderType = exports.exportXlsxFolderToTiaCommand = exports.exportXlsxToTiaCommand = exports.exportProgramToTiaCommand = exports.exportUnifiedToTiaCommand = exports.exportBlockFolderToTiaCommand = exports.exportXmlFolderToTiaCommand = exports.exportBlockToTiaCommand = exports.exportXmlToTiaCommand = exports.pickOverwriteMode = exports.pickDevice = exports.validateProjectDevices = exports.ensureConnection = exports.findProgramBlocksBasePath = exports.detectFolderType = exports.getEmptyFoldersInDirectory = exports.getSupportedFilesInFolder = exports.sortXmlFilesForImport = exports.isKnowHowProtectedPlaceholder = exports.isDependencyError = exports.isAlreadyExistsError = exports.SUPPORTED_EXTENSIONS = void 0;
+exports.detectPlcFolders = exports.detectPlcFolderType = exports.exportXlsxFolderToTiaCommand = exports.exportXlsxToTiaCommand = exports.exportProgramToTiaCommand = exports.exportUnifiedToTiaCommand = exports.exportBlockFolderToTiaCommand = exports.exportXmlFolderToTiaCommand = exports.exportBlockToTiaCommand = exports.exportXmlToTiaCommand = exports.pickOverwriteMode = exports.pickDevice = exports.isPlcDevice = exports.validateProjectPlcDevices = exports.validateProjectDevices = exports.ensureConnection = exports.findProgramBlocksBasePath = exports.detectFolderType = exports.getEmptyFoldersInDirectory = exports.getSupportedFilesInFolder = exports.sortXmlFilesForImport = exports.isKnowHowProtectedPlaceholder = exports.isDependencyError = exports.isAlreadyExistsError = exports.SUPPORTED_EXTENSIONS = void 0;
 // Export utilities
 var exportUtils_1 = require("./exportUtils");
 Object.defineProperty(exports, "SUPPORTED_EXTENSIONS", { enumerable: true, get: function () { return exportUtils_1.SUPPORTED_EXTENSIONS; } });
@@ -16,6 +16,8 @@ Object.defineProperty(exports, "findProgramBlocksBasePath", { enumerable: true, 
 var exportDialogs_1 = require("./exportDialogs");
 Object.defineProperty(exports, "ensureConnection", { enumerable: true, get: function () { return exportDialogs_1.ensureConnection; } });
 Object.defineProperty(exports, "validateProjectDevices", { enumerable: true, get: function () { return exportDialogs_1.validateProjectDevices; } });
+Object.defineProperty(exports, "validateProjectPlcDevices", { enumerable: true, get: function () { return exportDialogs_1.validateProjectPlcDevices; } });
+Object.defineProperty(exports, "isPlcDevice", { enumerable: true, get: function () { return exportDialogs_1.isPlcDevice; } });
 Object.defineProperty(exports, "pickDevice", { enumerable: true, get: function () { return exportDialogs_1.pickDevice; } });
 Object.defineProperty(exports, "pickOverwriteMode", { enumerable: true, get: function () { return exportDialogs_1.pickOverwriteMode; } });
 // Export commands - single file

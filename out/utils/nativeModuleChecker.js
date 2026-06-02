@@ -247,6 +247,16 @@ class NativeModuleChecker {
         return null;
     }
     /**
+     * Quick connectivity check — resolves true when npmjs.org is reachable.
+     */
+    static isOnline() {
+        return new Promise((resolve) => {
+            require('dns').lookup('registry.npmjs.org', (err) => {
+                resolve(!err);
+            });
+        });
+    }
+    /**
      * Attempt automatic repair of native modules.
      */
     static async attemptRepair(extensionPath, errorMessage) {
@@ -260,21 +270,37 @@ class NativeModuleChecker {
                 // Step 1: Check if Electron version mismatch requires a different electron-edge-js version
                 const requiredVersion = this.getRequiredElectronEdgeVersion(extensionPath);
                 if (requiredVersion) {
-                    logger_1.Logger.info(`Electron major version ${requiredVersion} not in pre-built list. Installing matching electron-edge-js@${requiredVersion}...`);
-                    progress.report({ message: `Installing electron-edge-js@${requiredVersion}...`, increment: 0 });
-                    const versionInstallSuccess = await this.runVersionSpecificInstall(extensionPath, requiredVersion);
-                    if (versionInstallSuccess) {
-                        progress.report({ message: 'Version-matched install completed', increment: 60 });
-                        // Verify it loaded
-                        const verifyResult = this.tryLoadNativeModule(extensionPath);
-                        if (verifyResult.success) {
-                            logger_1.Logger.success(`electron-edge-js@${requiredVersion} installed and loaded successfully`);
-                            return true;
+                    const nativeBinPath = path.join(extensionPath, 'node_modules', 'electron-edge-js', 'lib', 'native', 'win32', 'x64', String(requiredVersion));
+                    if (!fs.existsSync(nativeBinPath)) {
+                        // Binaries not bundled — need internet
+                        logger_1.Logger.info(`Pre-built binaries for Electron ${requiredVersion} are not bundled. Checking network...`);
+                        const online = await this.isOnline();
+                        if (!online) {
+                            logger_1.Logger.error(`OFFLINE: Pre-built binaries for Electron ${requiredVersion} are not included in this version of the extension.`);
+                            logger_1.Logger.error(`To fix without internet: update the TIA Import extension to a version that bundles Electron ${requiredVersion} binaries.`);
+                            logger_1.Logger.error(`Bundled versions: ${this.getBundledVersions(extensionPath).join(', ') || 'none'}`);
+                            return false;
                         }
-                        logger_1.Logger.warn(`electron-edge-js@${requiredVersion} installed but still cannot load. Trying rebuild...`);
+                        logger_1.Logger.info(`Electron major version ${requiredVersion} not in pre-built list. Installing matching electron-edge-js@${requiredVersion}...`);
+                        progress.report({ message: `Installing electron-edge-js@${requiredVersion}...`, increment: 0 });
+                        const versionInstallSuccess = await this.runVersionSpecificInstall(extensionPath, requiredVersion);
+                        if (versionInstallSuccess) {
+                            progress.report({ message: 'Version-matched install completed', increment: 60 });
+                            const verifyResult = this.tryLoadNativeModule(extensionPath);
+                            if (verifyResult.success) {
+                                logger_1.Logger.success(`electron-edge-js@${requiredVersion} installed and loaded successfully`);
+                                return true;
+                            }
+                            logger_1.Logger.warn(`electron-edge-js@${requiredVersion} installed but still cannot load. Trying rebuild...`);
+                        }
+                        else {
+                            logger_1.Logger.warn(`Failed to install electron-edge-js@${requiredVersion}. Trying standard repair...`);
+                        }
                     }
                     else {
-                        logger_1.Logger.warn(`Failed to install electron-edge-js@${requiredVersion}. Trying standard repair...`);
+                        // Binaries ARE bundled but module failed to load — don't waste time on npm install
+                        logger_1.Logger.warn(`Pre-built binaries for Electron ${requiredVersion} exist at ${nativeBinPath} but failed to load.`);
+                        logger_1.Logger.warn('Skipping npm install — binaries are bundled. Trying rebuild instead.');
                     }
                 }
                 // Step 2: Try npm rebuild (fastest, works when binaries just need recompilation)
@@ -284,12 +310,18 @@ class NativeModuleChecker {
                     progress.report({ message: 'Rebuild completed', increment: 50 });
                     return true;
                 }
-                // Step 3: Full reinstall of electron-edge-js (generic version)
-                progress.report({ message: 'Reinstalling electron-edge-js...', increment: 30 });
-                const reinstallSuccess = await this.runNpmInstall(extensionPath);
-                if (reinstallSuccess) {
-                    progress.report({ message: 'Reinstall completed', increment: 70 });
-                    return true;
+                // Step 3: Full reinstall of electron-edge-js (generic version) — only if online
+                const onlineForReinstall = await this.isOnline();
+                if (onlineForReinstall) {
+                    progress.report({ message: 'Reinstalling electron-edge-js...', increment: 30 });
+                    const reinstallSuccess = await this.runNpmInstall(extensionPath);
+                    if (reinstallSuccess) {
+                        progress.report({ message: 'Reinstall completed', increment: 70 });
+                        return true;
+                    }
+                }
+                else {
+                    logger_1.Logger.warn('OFFLINE: Skipping npm reinstall (no internet access).');
                 }
                 return false;
             }
@@ -301,10 +333,34 @@ class NativeModuleChecker {
         return progressResult;
     }
     /**
+     * Returns sorted list of Electron major versions with bundled pre-built binaries.
+     */
+    static getBundledVersions(extensionPath) {
+        const nativePath = path.join(extensionPath, 'node_modules', 'electron-edge-js', 'lib', 'native', 'win32', 'x64');
+        if (!fs.existsSync(nativePath)) {
+            return [];
+        }
+        try {
+            return fs.readdirSync(nativePath)
+                .filter(f => /^\d+$/.test(f))
+                .sort((a, b) => parseInt(a) - parseInt(b));
+        }
+        catch {
+            return [];
+        }
+    }
+    /**
      * Install a specific version of electron-edge-js matching the current Electron major version.
      */
     static runVersionSpecificInstall(extensionPath, electronMajor) {
         return new Promise((resolve) => {
+            // Skip install if pre-built binaries are already present (bundled in VSIX)
+            const nativeBinPath = path.join(extensionPath, 'node_modules', 'electron-edge-js', 'lib', 'native', 'win32', 'x64', String(electronMajor));
+            if (fs.existsSync(nativeBinPath)) {
+                logger_1.Logger.warn(`Pre-built binaries for Electron ${electronMajor} already exist — skipping npm install.`);
+                resolve(false);
+                return;
+            }
             const pkg = `electron-edge-js@${electronMajor}`;
             logger_1.Logger.info(`Installing ${pkg} in extension directory...`);
             (0, child_process_1.exec)(`npm install --no-save ${pkg}`, { cwd: extensionPath, timeout: 180000 }, (error, stdout, stderr) => {
@@ -374,7 +430,16 @@ class NativeModuleChecker {
         const electronMajor = process.versions.electron
             ? parseInt(process.versions.electron.split('.')[0])
             : undefined;
-        logger_1.Logger.error('To fix manually, run the following in a terminal:');
+        const bundledVersions = this.getBundledVersions(extensionPath);
+        if (bundledVersions.length > 0 && electronMajor && !bundledVersions.includes(String(electronMajor))) {
+            logger_1.Logger.error(`OFFLINE FIX: This extension bundles pre-built binaries for Electron: ${bundledVersions.join(', ')}`);
+            logger_1.Logger.error(`Your VS Code uses Electron ${electronMajor}, which is NOT bundled.`);
+            logger_1.Logger.error(`Option 1 (recommended): Update the TIA Import extension — a newer version may bundle Electron ${electronMajor}.`);
+            logger_1.Logger.error(`Option 2 (with internet): Run the following in a terminal:`);
+        }
+        else {
+            logger_1.Logger.error('To fix manually, run the following in a terminal:');
+        }
         logger_1.Logger.error('');
         logger_1.Logger.error(`  cd "${extensionPath}"`);
         if (electronMajor) {

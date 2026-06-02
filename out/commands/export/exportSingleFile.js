@@ -77,7 +77,7 @@ async function exportMultipleFilesCore(connectionService, config, uris) {
             vscode.window.showWarningMessage(`${config.uiLabel}: No supported files in selection. Supported: ${exportUtils_1.SUPPORTED_EXTENSIONS.join(', ')}`);
             return;
         }
-        const devices = (0, exportDialogs_1.validateProjectDevices)(connectionService);
+        const devices = (0, exportDialogs_1.validateProjectPlcDevices)(connectionService);
         if (!devices) {
             return;
         }
@@ -197,7 +197,7 @@ async function exportSingleFileCore(connectionService, config, uri) {
         if (!filePath) {
             return;
         }
-        const devices = (0, exportDialogs_1.validateProjectDevices)(connectionService);
+        const devices = (0, exportDialogs_1.validateProjectPlcDevices)(connectionService);
         if (!devices) {
             return;
         }
