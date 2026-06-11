@@ -68,6 +68,17 @@ internal class ConnectionMethodsHandler
 		return await connectedService.GetProjectsAsync();
 	}
 
+	internal async Task<object> OpenProject(dynamic parameters)
+	{
+		TiaPortalService tiaPortalService = _getService();
+		if (tiaPortalService == null)
+		{
+			tiaPortalService = new TiaPortalService();
+			_setService(tiaPortalService);
+		}
+		return await tiaPortalService.OpenProjectAsync((string)parameters.filePath);
+	}
+
 	internal async Task<object> SelectProject(dynamic parameters)
 	{
 		if (!TiaConnectionGuard.TryGetService(_getService(), out TiaPortalService connectedService, out object errorResult))

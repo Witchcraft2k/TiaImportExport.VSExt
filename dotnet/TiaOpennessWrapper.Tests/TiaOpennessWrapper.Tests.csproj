@@ -24,7 +24,7 @@
     .NET SDK installed (no TIA Portal required).
   -->
   <ItemGroup>
-    <Compile Include="..\TiaOpennessWrapper\Services\Helpers\TiaFolderFinder.cs">
+    <Compile Include="..\TiaOpennessWrapper\TiaOpennessWrapper.Services.Helpers\TiaFolderFinder.cs">
       <Link>Linked\TiaFolderFinder.cs</Link>
     </Compile>
   </ItemGroup>

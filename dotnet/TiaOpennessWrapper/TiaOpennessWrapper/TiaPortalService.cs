@@ -116,6 +116,11 @@ public class TiaPortalService
 		return _connectionManager.GetProjectsAsync();
 	}
 
+	public Task<object> OpenProjectAsync(string projectPath)
+	{
+		return _connectionManager.OpenProjectAsync(projectPath);
+	}
+
 	public Task<object> SelectProjectAsync(string projectName)
 	{
 		return _connectionManager.SelectProjectAsync(projectName);

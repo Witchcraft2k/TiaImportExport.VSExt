@@ -127,7 +127,7 @@ for (const major of SUPPORTED_VERSIONS) {
     console.log(`[V${major}] Building wrapper using ${source}...`);
     const res = spawnSync(
         'dotnet',
-        ['build', PROJECT, '-c', 'Release', `/p:OpennessTiaMajor=${major}`, '-v', 'minimal'],
+        ['build', `"${PROJECT}"`, '-c', 'Release', `/p:OpennessTiaMajor=${major}`, '-v', 'minimal'],
         { stdio: 'inherit', shell: true }
     );
 

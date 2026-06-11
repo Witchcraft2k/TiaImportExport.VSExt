@@ -207,6 +207,11 @@ public class TiaConnectionManager : IDeviceLocator
 		});
 	}
 
+	public async Task<object> OpenProjectAsync(string projectPath)
+	{
+		return await Task.Run(() => OpenProjectFromPath(projectPath, "Headless"));
+	}
+
 	public async Task<object> SelectProjectAsync(string projectName)
 	{
 		return await Task.Run((Func<object>)delegate
@@ -406,8 +411,44 @@ public class TiaConnectionManager : IDeviceLocator
 					error = "Project file not found: " + projectPath
 				};
 			}
-			_tiaPortal = new TiaPortal((TiaPortalMode)1);
-			_ownsTiaPortal = true;
+			return OpenProjectFromPath(projectPath, dialogForegroundMode);
+		}
+		catch (Exception ex)
+		{
+			return new
+			{
+				success = false,
+				error = "Failed to open project: " + ex.Message,
+				details = ex.ToString()
+			};
+		}
+	}
+
+	private object OpenProjectFromPath(string projectPath, string dialogForegroundMode)
+	{
+		try
+		{
+			if (string.IsNullOrWhiteSpace(projectPath))
+			{
+				return new
+				{
+					success = false,
+					error = "Project file path is required"
+				};
+			}
+			if (!File.Exists(projectPath))
+			{
+				return new
+				{
+					success = false,
+					error = "Project file not found: " + projectPath
+				};
+			}
+			if (_tiaPortal == null)
+			{
+				_tiaPortal = new TiaPortal((TiaPortalMode)1);
+				_ownsTiaPortal = true;
+			}
 			FileInfo fileInfo = new FileInfo(projectPath);
 			if (IsLocalSessionFile(fileInfo))
 			{
@@ -436,6 +477,7 @@ public class TiaConnectionManager : IDeviceLocator
 			{
 				success = true,
 				connected = true,
+				project = tiaProjectInfo,
 				projects = _projects,
 				message = "Opened project: " + _currentProject.Name,
 				dialogForegroundMode = dialogForegroundMode,
@@ -455,6 +497,7 @@ public class TiaConnectionManager : IDeviceLocator
 				{
 				}
 				_tiaPortal = null;
+				_ownsTiaPortal = false;
 			}
 			return new
 			{

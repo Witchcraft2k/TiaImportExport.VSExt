@@ -205,6 +205,7 @@ public class TiaConnector
 		tiaMethodRouter.Register("Detach", new Func<object, Task<object>>(connectionMethodsHandler.Detach));
 		tiaMethodRouter.Register("Ping", new Func<object, Task<object>>(connectionMethodsHandler.Ping));
 		tiaMethodRouter.Register("GetProjects", new Func<object, Task<object>>(connectionMethodsHandler.GetProjects));
+		tiaMethodRouter.Register("OpenProject", new Func<object, Task<object>>(connectionMethodsHandler.OpenProject));
 		tiaMethodRouter.Register("SelectProject", new Func<object, Task<object>>(connectionMethodsHandler.SelectProject));
 		tiaMethodRouter.Register("GetProjectStructure", new Func<object, Task<object>>(connectionMethodsHandler.GetProjectStructure));
 		tiaMethodRouter.Register("ExportBlocks", new Func<object, Task<object>>(softwareExportMethodsHandler.ExportBlocks));

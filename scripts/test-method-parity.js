@@ -30,7 +30,7 @@ function collectTsMethodsFromBridge(bridgeDir) {
     return methods;
   }
   for (const entry of fs.readdirSync(bridgeDir)) {
-    if (!entry.endsWith('.ts')) continue;
+    if (!entry.endsWith('.js')) continue;
     const content = read(path.join(bridgeDir, entry));
     for (const m of extractTsMethods(content)) methods.add(m);
   }
@@ -39,7 +39,7 @@ function collectTsMethodsFromBridge(bridgeDir) {
 
 function extractCsMethods(fileContent) {
   const methods = new Set();
-  const regex = /router\.Register\("([^"]+)"/g;
+  const regex = /tiaMethodRouter\.Register\("([^"]+)"/g;
   let match;
 
   while ((match = regex.exec(fileContent)) !== null) {
@@ -55,8 +55,8 @@ function difference(firstSet, secondSet) {
 
 function main() {
   const repositoryRoot = path.resolve(__dirname, '..');
-  const bridgeDir = path.join(repositoryRoot, 'src', 'services', 'bridge');
-  const connectorPath = path.join(repositoryRoot, 'dotnet', 'TiaOpennessWrapper', 'TiaConnector.cs');
+  const bridgeDir = path.join(repositoryRoot, 'out', 'services', 'bridge');
+  const connectorPath = path.join(repositoryRoot, 'dotnet', 'TiaOpennessWrapper', 'TiaOpennessWrapper', 'TiaConnector.cs');
 
   const csContent = read(connectorPath);
 
