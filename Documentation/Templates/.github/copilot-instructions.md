@@ -28,6 +28,12 @@ The functional description of automation systems should provide the developer wi
 
 **Always** consult this file for context when answering questions about the project.
 
+## TIA CLI Automation
+
+If `.github/CLI-instruction.md` exists, consult it before using external CLI
+automation. The extension writes `.tia/cli.json` with the current localhost
+bridge host, port, and token; read that file dynamically and never commit it.
+
 **Rule:** When making changes that affect the project structure, architecture, communication logic, block hierarchy, message definitions, or data block layout, **always** update `.github/ProjectDescription.md` to reflect those changes. This includes:
 
 - Adding, removing, or renaming program blocks (FB, FC, OB, DB, UDT)

@@ -154,10 +154,9 @@ class TiaConnectionService {
                 }
                 else if (this._projects.length === 1) {
                     // If exactly one project is available, select it immediately.
-                    const singleProject = this._projects[0];
-                    const singleProjectRef = singleProject.id || singleProject.name;
-                    logger_1.Logger.info(`Single project detected. Auto-selecting: ${singleProject.name}`);
-                    await this.selectProject(singleProjectRef);
+                    const singleProjectName = this._projects[0].name;
+                    logger_1.Logger.info(`Single project detected. Auto-selecting: ${singleProjectName}`);
+                    await this.selectProject(singleProjectName);
                 }
                 else {
                     logger_1.Logger.list('Projects found', this._projects.map(p => p.name));
@@ -175,6 +174,38 @@ class TiaConnectionService {
         catch (error) {
             logger_1.Logger.error('Exception while connecting to TIA Portal', error);
             logger_1.Logger.endOperation('Connect to TIA Portal', false);
+            return false;
+        }
+    }
+    /**
+     * Open a TIA Portal project from an explicit file path without showing UI.
+     */
+    async openProject(filePath) {
+        logger_1.Logger.startOperation(`Open TIA Portal project: ${filePath}`);
+        try {
+            const result = await this._bridge.openProject(filePath);
+            if (result.success) {
+                this._isConnected = true;
+                this._projects = result.projects || [];
+                if (result.project) {
+                    this._currentProject = result.project;
+                    this._onProjectChanged.fire(this._currentProject);
+                }
+                else if (result.autoSelectedProject) {
+                    await this.selectProject(result.autoSelectedProject);
+                }
+                this._onConnectionChanged.fire(true);
+                logger_1.Logger.success(result.message || `Project opened: ${result.autoSelectedProject || filePath}`);
+                logger_1.Logger.endOperation(`Open TIA Portal project: ${filePath}`, true);
+                return true;
+            }
+            logger_1.Logger.error('Failed to open TIA Portal project', result.error);
+            logger_1.Logger.endOperation(`Open TIA Portal project: ${filePath}`, false);
+            return false;
+        }
+        catch (error) {
+            logger_1.Logger.error('Exception while opening TIA Portal project', error);
+            logger_1.Logger.endOperation(`Open TIA Portal project: ${filePath}`, false);
             return false;
         }
     }
@@ -290,8 +321,7 @@ class TiaConnectionService {
             return;
         }
         try {
-            const projectRef = this._currentProject.id || this._currentProject.name;
-            const result = await this._bridge.getProjectStructure(projectRef);
+            const result = await this._bridge.getProjectStructure(this._currentProject.name);
             if (result.success && result.project) {
                 this._currentProject = result.project;
                 this._onProjectChanged.fire(this._currentProject);

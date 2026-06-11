@@ -52,6 +52,7 @@ const nativeModuleChecker_1 = require("./utils/nativeModuleChecker");
 const tiaApi_1 = require("./api/tiaApi");
 const tools_1 = require("./lm/tools");
 const chatParticipant_1 = require("./lm/chatParticipant");
+const tiaCliServer_1 = require("./cli/tiaCliServer");
 const config_1 = require("./utils/config");
 let tiaConnectionService;
 let projectImportService;
@@ -120,6 +121,8 @@ async function activate(context) {
             const api = (0, tiaApi_1.initTiaApi)(tiaConnectionService, projectImportService);
             (0, tools_1.registerLanguageModelTools)(context, api);
             (0, chatParticipant_1.registerChatParticipant)(context);
+            context.subscriptions.push((0, tiaCliServer_1.startTiaCliServer)(context, api));
+            context.subscriptions.push(vscode.commands.registerCommand('tia-import.startCli', () => ({ success: true })));
         }
         catch (lmErr) {
             logger_1.Logger.warn('Failed to register Language Model integration (non-fatal)', lmErr);

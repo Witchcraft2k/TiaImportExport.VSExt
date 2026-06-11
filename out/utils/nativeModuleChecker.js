@@ -142,7 +142,7 @@ class NativeModuleChecker {
         }
         try {
             const versions = fs.readdirSync(nativePath)
-                .filter(f => /^\d+$/.test(f))
+                .filter(f => /^\d+$/.test(f) && this.hasElectronNativeBinary(extensionPath, parseInt(f)))
                 .sort((a, b) => parseInt(a) - parseInt(b));
             logger_1.Logger.info(`Available pre-built Electron versions: ${versions.join(', ')}`);
             const electronMajor = process.versions.electron
@@ -229,13 +229,14 @@ class NativeModuleChecker {
         if (!electronMajor) {
             return null;
         }
-        const nativePath = path.join(extensionPath, 'node_modules', 'electron-edge-js', 'lib', 'native', 'win32', 'x64');
-        if (!fs.existsSync(nativePath)) {
+        const modulePath = path.join(extensionPath, 'node_modules', 'electron-edge-js');
+        const nativePath = path.join(modulePath, 'lib', 'native', 'win32', 'x64');
+        if (!fs.existsSync(path.join(modulePath, 'lib', 'edge.js')) || !fs.existsSync(nativePath)) {
             return electronMajor;
         }
         try {
             const versions = fs.readdirSync(nativePath)
-                .filter(f => /^\d+$/.test(f))
+                .filter(f => /^\d+$/.test(f) && this.hasElectronNativeBinary(extensionPath, parseInt(f)))
                 .map(f => parseInt(f));
             if (!versions.includes(electronMajor)) {
                 return electronMajor;
@@ -271,7 +272,7 @@ class NativeModuleChecker {
                 const requiredVersion = this.getRequiredElectronEdgeVersion(extensionPath);
                 if (requiredVersion) {
                     const nativeBinPath = path.join(extensionPath, 'node_modules', 'electron-edge-js', 'lib', 'native', 'win32', 'x64', String(requiredVersion));
-                    if (!fs.existsSync(nativeBinPath)) {
+                    if (!this.hasElectronEdgeRuntime(extensionPath, requiredVersion)) {
                         // Binaries not bundled — need internet
                         logger_1.Logger.info(`Pre-built binaries for Electron ${requiredVersion} are not bundled. Checking network...`);
                         const online = await this.isOnline();
@@ -342,12 +343,20 @@ class NativeModuleChecker {
         }
         try {
             return fs.readdirSync(nativePath)
-                .filter(f => /^\d+$/.test(f))
+                .filter(f => /^\d+$/.test(f) && this.hasElectronNativeBinary(extensionPath, parseInt(f)))
                 .sort((a, b) => parseInt(a) - parseInt(b));
         }
         catch {
             return [];
         }
+    }
+    static hasElectronEdgeRuntime(extensionPath, electronMajor) {
+        const entryPoint = path.join(extensionPath, 'node_modules', 'electron-edge-js', 'lib', 'edge.js');
+        return fs.existsSync(entryPoint) && this.hasElectronNativeBinary(extensionPath, electronMajor);
+    }
+    static hasElectronNativeBinary(extensionPath, electronMajor) {
+        const binaryPath = path.join(extensionPath, 'node_modules', 'electron-edge-js', 'lib', 'native', 'win32', 'x64', String(electronMajor), 'edge_nativeclr.node');
+        return fs.existsSync(binaryPath);
     }
     /**
      * Install a specific version of electron-edge-js matching the current Electron major version.
@@ -356,7 +365,7 @@ class NativeModuleChecker {
         return new Promise((resolve) => {
             // Skip install if pre-built binaries are already present (bundled in VSIX)
             const nativeBinPath = path.join(extensionPath, 'node_modules', 'electron-edge-js', 'lib', 'native', 'win32', 'x64', String(electronMajor));
-            if (fs.existsSync(nativeBinPath)) {
+            if (this.hasElectronEdgeRuntime(extensionPath, electronMajor)) {
                 logger_1.Logger.warn(`Pre-built binaries for Electron ${electronMajor} already exist — skipping npm install.`);
                 resolve(false);
                 return;
@@ -399,7 +408,7 @@ class NativeModuleChecker {
     static runNpmInstall(extensionPath) {
         return new Promise((resolve) => {
             logger_1.Logger.info('Running npm install in extension directory...');
-            (0, child_process_1.exec)('npm install --no-save electron-edge-js edge-js', { cwd: extensionPath, timeout: 180000 }, (error, stdout, stderr) => {
+            (0, child_process_1.exec)(`npm install --no-save electron-edge-js@${process.versions.electron ? parseInt(process.versions.electron.split('.')[0]) : 'latest'} edge-js`, { cwd: extensionPath, timeout: 180000 }, (error, stdout, stderr) => {
                 if (error) {
                     logger_1.Logger.warn(`npm install failed: ${error.message}`);
                     if (stderr) {

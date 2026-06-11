@@ -74,6 +74,21 @@ class TiaApi {
             return err(e instanceof Error ? e.message : String(e));
         }
     }
+    async openProject(filePath) {
+        if (!fs.existsSync(filePath)) {
+            return err(`Project file not found: ${filePath}`);
+        }
+        try {
+            const success = await this.connection.openProject(filePath);
+            if (!success) {
+                return err(`Failed to open TIA project: ${filePath}`);
+            }
+            return ok({ projectName: this.connection.currentProjectName }, `Opened TIA project ${this.connection.currentProjectName || filePath}`);
+        }
+        catch (e) {
+            return err(e instanceof Error ? e.message : String(e));
+        }
+    }
     async disconnect() {
         try {
             await this.connection.disconnect();
@@ -85,6 +100,29 @@ class TiaApi {
     }
     isConnected() {
         return this.connection.isConnected;
+    }
+    async prepareWorkspace() {
+        try {
+            const workspacePath = workspace_1.WorkspaceManager.getWorkspacePath();
+            if (!workspacePath) {
+                return err('No workspace folder is open. Open a workspace folder before calling prepare_workspace.');
+            }
+            await workspace_1.WorkspaceManager.initializeWorkspaceStructure();
+            return ok({ workspacePath }, 'Workspace prepared - templates copied from Documentation/Templates.');
+        }
+        catch (e) {
+            return err(e instanceof Error ? e.message : String(e));
+        }
+    }
+    currentProject() {
+        return ok({
+            connected: this.connection.isConnected,
+            projectName: this.connection.currentProjectName
+        });
+    }
+    getLogs(options) {
+        const entries = logger_1.Logger.getEntries(options);
+        return ok({ entries, lines: entries.map(entry => entry.line) });
     }
     async ensureConnected() {
         if (!this.connection.isConnected) {
@@ -217,6 +255,73 @@ class TiaApi {
         catch (e) {
             return err(e instanceof Error ? e.message : String(e));
         }
+    }
+    /**
+     * Export selected blocks, or all blocks on a device when no block list is supplied.
+     * Uses the same file format settings as the UI (`tiaImport.exportFormat`,
+     * `tiaImport.dbExportFormat`, SD preview mirror, etc.) via `exportBlock`.
+     */
+    async exportBlocks(deviceIdOrName, blockNamesOrIds) {
+        const guard = await this.ensureConnected();
+        if (!guard.success) {
+            return guard;
+        }
+        const blocksRes = this.listBlocks(deviceIdOrName);
+        if (!blocksRes.success) {
+            return blocksRes;
+        }
+        const requested = (blockNamesOrIds || []).map(value => value.trim()).filter(Boolean);
+        const cfg = (0, config_1.getConfig)();
+        const targets = requested.length > 0
+            ? requested.map(blockNameOrId => {
+                const block = blocksRes.data.find(b => b.id === blockNameOrId || b.name === blockNameOrId);
+                return { blockNameOrId, block };
+            })
+            : blocksRes.data
+                .filter(block => !cfg.excludeSystemBlocks || !block.isSystem)
+                .map(block => ({ blockNameOrId: block.id, block }));
+        const missing = targets.filter(target => !target.block).map(target => target.blockNameOrId);
+        if (missing.length > 0) {
+            return err(`Block(s) not found on device "${deviceIdOrName}": ${missing.join(', ')}`);
+        }
+        let successCount = 0;
+        let errorCount = 0;
+        let skippedCount = 0;
+        const messages = [];
+        for (const target of targets) {
+            const block = target.block;
+            const result = await this.exportBlock(deviceIdOrName, block.id);
+            if (!result.success) {
+                errorCount++;
+                messages.push({
+                    type: 'error',
+                    itemName: block.name,
+                    itemType: block.type,
+                    message: result.error
+                });
+                continue;
+            }
+            const data = result.data;
+            successCount += data?.successCount ?? (data?.success === true && !data.skipped ? 1 : 0);
+            skippedCount += data?.skippedCount ?? (data?.skipped ? 1 : 0);
+            errorCount += data?.errorCount ?? 0;
+            if (data?.messages) {
+                messages.push(...data.messages);
+            }
+        }
+        const itemCount = targets.length;
+        const aggregate = {
+            success: errorCount === 0,
+            itemCount,
+            successCount,
+            errorCount,
+            skippedCount,
+            messages
+        };
+        if (errorCount > 0 && successCount === 0 && skippedCount === 0) {
+            return err(`Block import failed for all ${itemCount} block(s)`);
+        }
+        return ok(aggregate, `Imported ${successCount} block(s), skipped ${skippedCount}, errors ${errorCount}`);
     }
     /**
      * Export every block / tag table / UDT / watch table for a device.

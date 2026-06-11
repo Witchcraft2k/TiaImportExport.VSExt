@@ -43,10 +43,12 @@ var LogLevel;
     LogLevel[LogLevel["WARN"] = 2] = "WARN";
     LogLevel[LogLevel["ERROR"] = 3] = "ERROR";
 })(LogLevel || (exports.LogLevel = LogLevel = {}));
+const MAX_BUFFER_LINES = 2000;
 class LoggerService {
     outputChannel;
     logLevel = LogLevel.DEBUG; // Show all logs by default
     showOnError = true;
+    entries = [];
     constructor() {
         this.outputChannel = vscode.window.createOutputChannel('TIA Portal Import', { log: true });
     }
@@ -60,20 +62,44 @@ class LoggerService {
         const line = '─'.repeat(60);
         return `\n${line}\n  ${title}\n${line}`;
     }
+    timestamp() {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    }
+    buffer(level, message, line) {
+        this.entries.push({
+            level,
+            timestamp: this.timestamp(),
+            message,
+            line: line ?? `[${level.toUpperCase()}] ${this.timestamp()} ${message}`
+        });
+        if (this.entries.length > MAX_BUFFER_LINES) {
+            this.entries.splice(0, this.entries.length - MAX_BUFFER_LINES);
+        }
+    }
     /**
      * Log a section header for better readability
      */
     section(title) {
-        this.outputChannel.info(this.formatSection(title));
+        const line = this.formatSection(title);
+        this.outputChannel.info(line);
+        this.buffer('section', title, line);
     }
     /**
      * Log debug message
      */
     debug(message, data) {
         if (this.logLevel <= LogLevel.DEBUG) {
-            this.outputChannel.debug(this.fixFilePathLinks(message));
+            const line = this.fixFilePathLinks(message);
+            this.outputChannel.debug(line);
+            this.buffer('debug', message, line);
             if (data !== undefined) {
-                this.outputChannel.debug(`  └─ ${this.fixFilePathLinks(this.formatData(data))}`);
+                const dataLine = `  └─ ${this.fixFilePathLinks(this.formatData(data))}`;
+                this.outputChannel.debug(dataLine);
+                this.buffer('debug', this.formatData(data), dataLine);
             }
         }
     }
@@ -82,9 +108,13 @@ class LoggerService {
      */
     info(message, data) {
         if (this.logLevel <= LogLevel.INFO) {
-            this.outputChannel.info(this.fixFilePathLinks(message));
+            const line = this.fixFilePathLinks(message);
+            this.outputChannel.info(line);
+            this.buffer('info', message, line);
             if (data !== undefined) {
-                this.outputChannel.info(`  └─ ${this.fixFilePathLinks(this.formatData(data))}`);
+                const dataLine = `  └─ ${this.fixFilePathLinks(this.formatData(data))}`;
+                this.outputChannel.info(dataLine);
+                this.buffer('info', this.formatData(data), dataLine);
             }
         }
     }
@@ -93,9 +123,13 @@ class LoggerService {
      */
     success(message, data) {
         if (this.logLevel <= LogLevel.INFO) {
-            this.outputChannel.info(`✓ OK  ${this.fixFilePathLinks(message)}`);
+            const line = `✓ OK  ${this.fixFilePathLinks(message)}`;
+            this.outputChannel.info(line);
+            this.buffer('info', message, line);
             if (data !== undefined) {
-                this.outputChannel.info(`  └─ ${this.fixFilePathLinks(this.formatData(data))}`);
+                const dataLine = `  └─ ${this.fixFilePathLinks(this.formatData(data))}`;
+                this.outputChannel.info(dataLine);
+                this.buffer('info', this.formatData(data), dataLine);
             }
         }
     }
@@ -104,9 +138,13 @@ class LoggerService {
      */
     warn(message, data) {
         if (this.logLevel <= LogLevel.WARN) {
-            this.outputChannel.warn(this.fixFilePathLinks(message));
+            const line = this.fixFilePathLinks(message);
+            this.outputChannel.warn(line);
+            this.buffer('warn', message, line);
             if (data !== undefined) {
-                this.outputChannel.warn(`  └─ ${this.fixFilePathLinks(this.formatData(data))}`);
+                const dataLine = `  └─ ${this.fixFilePathLinks(this.formatData(data))}`;
+                this.outputChannel.warn(dataLine);
+                this.buffer('warn', this.formatData(data), dataLine);
             }
         }
     }
@@ -115,20 +153,28 @@ class LoggerService {
      */
     error(message, error) {
         if (this.logLevel <= LogLevel.ERROR) {
-            this.outputChannel.error(this.fixFilePathLinks(message));
+            const line = this.fixFilePathLinks(message);
+            this.outputChannel.error(line);
+            this.buffer('error', message, line);
             if (error) {
                 if (error instanceof Error) {
-                    this.outputChannel.error(`  ├─ Message: ${this.fixFilePathLinks(error.message)}`);
+                    const messageLine = `  ├─ Message: ${this.fixFilePathLinks(error.message)}`;
+                    this.outputChannel.error(messageLine);
+                    this.buffer('error', error.message, messageLine);
                     if (error.stack) {
                         const stackLines = error.stack.split('\n').slice(1, 4);
                         stackLines.forEach((line, i) => {
                             const prefix = i === stackLines.length - 1 ? '└─' : '├─';
-                            this.outputChannel.error(`  ${prefix} ${line.trim()}`);
+                            const stackLine = `  ${prefix} ${line.trim()}`;
+                            this.outputChannel.error(stackLine);
+                            this.buffer('error', line.trim(), stackLine);
                         });
                     }
                 }
                 else {
-                    this.outputChannel.error(`  └─ Details: ${this.fixFilePathLinks(this.formatData(error))}`);
+                    const detailsLine = `  └─ Details: ${this.fixFilePathLinks(this.formatData(error))}`;
+                    this.outputChannel.error(detailsLine);
+                    this.buffer('error', this.formatData(error), detailsLine);
                 }
             }
             // Auto-show output on error
@@ -142,7 +188,9 @@ class LoggerService {
      */
     startOperation(operation) {
         this.outputChannel.info('');
-        this.outputChannel.info(`[START] ▶ ${this.fixFilePathLinks(operation)}`);
+        const line = `[START] ▶ ${this.fixFilePathLinks(operation)}`;
+        this.outputChannel.info(line);
+        this.buffer('info', operation, line);
     }
     /**
      * Log operation end
@@ -150,16 +198,21 @@ class LoggerService {
     endOperation(operation, success, duration) {
         const status = success ? '✓' : '✗';
         const durationStr = duration ? ` (${duration}ms)` : '';
-        this.outputChannel.info(`[END  ] ${status} ${this.fixFilePathLinks(operation)}${durationStr}`);
+        const line = `[END  ] ${status} ${this.fixFilePathLinks(operation)}${durationStr}`;
+        this.outputChannel.info(line);
+        this.buffer(success ? 'info' : 'warn', operation, line);
     }
     /**
      * Log a list of items
      */
     list(title, items) {
         this.outputChannel.info(title);
+        this.buffer('info', title, title);
         items.forEach((item, i) => {
             const prefix = i === items.length - 1 ? '└─' : '├─';
-            this.outputChannel.info(`  ${prefix} ${item}`);
+            const line = `  ${prefix} ${item}`;
+            this.outputChannel.info(line);
+            this.buffer('info', item, line);
         });
     }
     /**
@@ -228,80 +281,6 @@ class LoggerService {
             this.writeDiagnostic('error', `Error: ${this.fixFilePathLinks(this.formatData(item))}`);
         }
         this.outputChannel.info(`───────────────────────────────────────────────`);
-    }
-    writeWrapperMessage(message) {
-        if (!message || typeof message !== 'object') {
-            this.writeDiagnostic('error', `Error: ${this.fixFilePathLinks(this.formatData(message))}`);
-            return;
-        }
-        const data = message;
-        const severity = this.nonEmptyText(data.type) || this.nonEmptyText(data.state) || 'error';
-        const level = this.isErrorText(severity) ? 'error' : 'warn';
-        const label = this.formatDiagnosticLabel(data);
-        const text = this.nonEmptyText(data.message) || this.nonEmptyText(data.description) || this.formatData(message);
-        const prefix = level === 'error' ? 'Error' : 'Warning';
-        this.writeDiagnostic(level, `${prefix}: ${label ? `${label} - ` : ''}${this.fixFilePathLinks(text)}`);
-        const details = this.nonEmptyText(data.details);
-        if (details) {
-            this.writeDiagnosticBlock(level, 'Details', details);
-        }
-        const path = this.nonEmptyText(data.filePath) || this.nonEmptyText(data.path);
-        if (path) {
-            this.writeDiagnostic(level, `  File: ${this.formatFilePath(path)}`);
-        }
-    }
-    formatDiagnosticLabel(data) {
-        const itemType = this.nonEmptyText(data.itemType);
-        const itemName = this.nonEmptyText(data.itemName);
-        const path = this.nonEmptyText(data.path);
-        if (itemType && itemName) {
-            return `${itemType}: ${itemName}`;
-        }
-        return itemName || itemType || path || '';
-    }
-    writeDiagnosticBlock(level, label, value) {
-        this.writeDiagnostic(level, `${label}:`);
-        const lines = value.split(/\r?\n/).filter(line => line.trim().length > 0);
-        for (const line of lines) {
-            this.writeDiagnostic(level, `  ${this.fixFilePathLinks(line.trim())}`);
-        }
-    }
-    writeDiagnostic(level, message) {
-        if (level === 'error') {
-            this.outputChannel.error(message);
-        }
-        else if (level === 'warn') {
-            this.outputChannel.warn(message);
-        }
-        else {
-            this.outputChannel.info(message);
-        }
-    }
-    isWarningOrErrorMessage(message) {
-        if (!message || typeof message !== 'object') {
-            return false;
-        }
-        const data = message;
-        const severity = this.nonEmptyText(data.type) || this.nonEmptyText(data.state);
-        return this.isWarningOrErrorText(severity)
-            || this.asNumber(data.errorCount) > 0
-            || this.asNumber(data.warningCount) > 0;
-    }
-    isWarningOrErrorText(value) {
-        return this.isErrorText(value) || value.toLowerCase().includes('warning') || value.toLowerCase() === 'warn';
-    }
-    isErrorText(value) {
-        return value.toLowerCase().includes('error') || value.toLowerCase() === 'failed';
-    }
-    nonEmptyText(value) {
-        if (typeof value !== 'string') {
-            return '';
-        }
-        const trimmed = value.trim();
-        return trimmed.length > 0 ? trimmed : '';
-    }
-    asNumber(value) {
-        return typeof value === 'number' && Number.isFinite(value) ? value : 0;
     }
     /**
      * Format a file path for display in the output channel.
@@ -383,6 +362,12 @@ class LoggerService {
                 if (msg.message) {
                     this.outputChannel.warn(`  └─ ${this.fixFilePathLinks(msg.message)}`);
                 }
+                if (msg.details) {
+                    const detailLines = msg.details.split('\n').filter(l => l.trim());
+                    detailLines.forEach((line) => {
+                        this.outputChannel.warn(`     ${this.fixFilePathLinks(line.trim())}`);
+                    });
+                }
                 if (msg.filePath) {
                     this.outputChannel.warn(`  └─ File: ${this.formatFilePath(msg.filePath)}`);
                 }
@@ -419,6 +404,81 @@ class LoggerService {
             case 'info': return 'ℹ';
             default: return '•';
         }
+    }
+    writeWrapperMessage(message) {
+        if (!message || typeof message !== 'object') {
+            this.writeDiagnostic('error', `Error: ${this.fixFilePathLinks(this.formatData(message))}`);
+            return;
+        }
+        const data = message;
+        const severity = this.nonEmptyText(data.type) || this.nonEmptyText(data.state) || 'error';
+        const level = this.isErrorText(severity) ? 'error' : 'warn';
+        const label = this.formatDiagnosticLabel(data);
+        const text = this.nonEmptyText(data.message) || this.nonEmptyText(data.description) || this.formatData(message);
+        const prefix = level === 'error' ? 'Error' : 'Warning';
+        this.writeDiagnostic(level, `${prefix}: ${label ? `${label} - ` : ''}${this.fixFilePathLinks(text)}`);
+        const details = this.nonEmptyText(data.details);
+        if (details) {
+            this.writeDiagnosticBlock(level, 'Details', details);
+        }
+        const path = this.nonEmptyText(data.filePath) || this.nonEmptyText(data.path);
+        if (path) {
+            this.writeDiagnostic(level, `  File: ${this.formatFilePath(path)}`);
+        }
+    }
+    formatDiagnosticLabel(data) {
+        const itemType = this.nonEmptyText(data.itemType);
+        const itemName = this.nonEmptyText(data.itemName);
+        const path = this.nonEmptyText(data.path);
+        if (itemType && itemName) {
+            return `${itemType}: ${itemName}`;
+        }
+        return itemName || itemType || path || '';
+    }
+    writeDiagnosticBlock(level, label, value) {
+        this.writeDiagnostic(level, `${label}:`);
+        const lines = value.split(/\r?\n/).filter(line => line.trim().length > 0);
+        for (const line of lines) {
+            this.writeDiagnostic(level, `  ${this.fixFilePathLinks(line.trim())}`);
+        }
+    }
+    writeDiagnostic(level, message) {
+        if (level === 'error') {
+            this.outputChannel.error(message);
+        }
+        else if (level === 'warn') {
+            this.outputChannel.warn(message);
+        }
+        else {
+            this.outputChannel.info(message);
+        }
+        this.buffer(level, message, message);
+    }
+    isWarningOrErrorMessage(message) {
+        if (!message || typeof message !== 'object') {
+            return false;
+        }
+        const data = message;
+        const severity = this.nonEmptyText(data.type) || this.nonEmptyText(data.state);
+        return this.isWarningOrErrorText(severity)
+            || this.asNumber(data.errorCount) > 0
+            || this.asNumber(data.warningCount) > 0;
+    }
+    isWarningOrErrorText(value) {
+        return this.isErrorText(value) || value.toLowerCase().includes('warning') || value.toLowerCase() === 'warn';
+    }
+    isErrorText(value) {
+        return value.toLowerCase().includes('error') || value.toLowerCase() === 'failed';
+    }
+    nonEmptyText(value) {
+        if (typeof value !== 'string') {
+            return '';
+        }
+        const trimmed = value.trim();
+        return trimmed.length > 0 ? trimmed : '';
+    }
+    asNumber(value) {
+        return typeof value === 'number' && Number.isFinite(value) ? value : 0;
     }
     /**
      * Log export summary
@@ -486,17 +546,31 @@ class LoggerService {
     show() {
         this.outputChannel.show();
     }
+    getEntries(options) {
+        let entries = this.entries;
+        if (options?.level && options.level !== 'all') {
+            entries = entries.filter(entry => entry.level === options.level);
+        }
+        if (options?.contains) {
+            const needle = options.contains.toLowerCase();
+            entries = entries.filter(entry => entry.line.toLowerCase().includes(needle));
+        }
+        const limit = Math.max(1, Math.min(MAX_BUFFER_LINES, options?.limit ?? 200));
+        return entries.slice(-limit);
+    }
     /**
      * Clear the output channel
      */
     clear() {
         this.outputChannel.clear();
+        this.entries = [];
     }
     /**
      * Dispose the output channel
      */
     dispose() {
         this.outputChannel.dispose();
+        this.entries = [];
     }
 }
 // Singleton instance

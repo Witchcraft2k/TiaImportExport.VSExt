@@ -64,6 +64,12 @@ function ConnectionBridgeMixin(Base) {
             return this.safeCall('Failed to get projects', 'GetProjects');
         }
         /**
+         * Open a TIA project by file path without showing a project picker.
+         */
+        async openProject(filePath) {
+            return this.safeCall('Failed to open project', 'OpenProject', { filePath });
+        }
+        /**
          * Select a project
          */
         async selectProject(projectName) {

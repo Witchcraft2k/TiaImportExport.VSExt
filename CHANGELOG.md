@@ -6,6 +6,105 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+
+## [3.0.0] - 2026-06-10
+
+Major version bump for the external automation CLI bridge and script-driven TIA Portal workflows.
+
+### Added
+
+- **Local JSON CLI bridge for external scripts** — the extension can now expose a localhost-only authenticated API for PowerShell, Python, Node.js and other automation clients. When `tiaImport.cli.enabled` is true, the bridge writes the active host, port and per-session token to `.tia/cli.json`; clients call `POST /api` with `Authorization: Bearer <token>`. The packaged helper is available as `npm run tia:cli -- <command>`.
+- **Headless project open from CLI** — `open_project --filePath "C:\Projects\Demo.ap21"` opens a TIA Portal project directly by path without showing the project picker, then refreshes the extension model for subsequent CLI operations.
+- **CLI-friendly project and diagnostics commands** — external scripts can now call `current_project`, `prepare_workspace`, `get_logs`, `connect`, `disconnect` / `close_project`, device/block discovery, import/export, compile, diagnostics and cross-reference commands through the same bridge.
+- **Example Python automation client** — `Documentation/Templates/Tools/cli_example.py` demonstrates reading `.tia/cli.json`, authenticating against the bridge and driving project export from an external script.
+
+### Changed
+
+- **CLI block import honours extension file-format settings** — `import_blocks` / `tia_import_blocks` now pulls selected blocks, or all blocks from a device, using the configured `tiaImport.exportFormat`, `tiaImport.dbExportFormat` and SD preview mirror behavior instead of forcing XML. `import_file` and `import_folder` remain the workspace-to-TIA push commands.
+- **CLI documentation and workspace templates refreshed** — README, generated CLI instructions and Copilot workspace instructions now describe the bridge state file, authentication model, command aliases and the distinction between pulling blocks from TIA and pushing local files back to TIA.
+- **Native dependency detection hardened for modern VS Code/Electron** — the startup checker validates the actual `electron-edge-js` payload (`lib/edge.js` and `edge_nativeclr.node`) and accepts future compatible versions via the minimal dependency range `electron-edge-js >=8.2.2`.
+
+---
+
+
+## [2.0.146] - 2026-06-01
+
+### Fixed
+
+- **TIA Portal V18 project selection with WinCC Unified references** — selecting/opening projects on some V18 installations no longer fails with `TypeLoadException` for `Siemens.Engineering.HmiUnified.HmiSoftware`. Project structure discovery now detects WinCC Unified software without a hard runtime dependency on that optional/version-sensitive Openness type, while preserving Unified HMI tree discovery on newer compatible runtimes.
+
+---
+
+## [2.0.144] - 2026-06-01
+
+### Changed
+
+- **Log Details available before connecting** — the connection panel now shows the `Log Details` toggle immediately after extension startup, before a TIA Portal connection or project selection is available.
+- **Expanded wrapper/TIA diagnostics** — when `Log Details` is enabled, bridge calls now include wrapper and TIA Openness warning/error details in the `TIA Portal Import` log, including exception details, compiler warning/error summaries and failed project-selection context.
+
+### Fixed
+
+- **Project selection diagnostics** — failed project selection now logs the wrapper error and, when available, the projects visible through TIA Openness so name mismatches are easier to diagnose.
+
+---
+
+## [2.0.141] - 2026-06-01
+
+### Fixed
+
+- **Flat HW export layout for IO devices** — importing HW configuration from TIA Portal no longer leaves redundant per-device folders under `Devices/IO_Devices` when the actual `.aml` / HW files are written directly into the flat IO devices folder. Empty stale IO device folders are cleaned up safely, while folders containing user files or previous exports are preserved.
+
+---
+
+## [2.0.134] - 2026-05-29
+
+### Fixed
+
+- **Offline native module handling** — the extension no longer attempts `npm install` when pre-built Electron binaries are already bundled in the VSIX but fail to load. `npm install` and `npm reinstall` are now skipped entirely when there is no internet access (DNS lookup to `registry.npmjs.org` is used to detect offline state). A clear diagnostic message is shown instead, listing the bundled Electron versions and suggesting an extension update as the offline fix.
+
+### Changed
+
+- **Improved offline error messages** — when native module repair fails in offline mode, the output now shows which Electron versions are bundled (`35–40`) and which version the current VS Code requires, making it easier to diagnose compatibility issues without internet access.
+- **Smaller multi-version VSIX package** — shared .NET wrapper dependencies are now deduplicated into `dotnet/TiaOpennessWrapper/bin/Release/net48/common/` after building V18–V21 wrappers. Version-specific folders now ship only their own `TiaOpennessWrapper.dll`, while the runtime resolver loads common DLLs from the shared folder.
+- **Windows x64 native payload trimming** — VSIX packaging now excludes unused `darwin`, `ia32`, and `arm64` native binaries from `edge-js` and `electron-edge-js`, while keeping Windows x64 offline binaries for Electron 35–40.
+
+---
+
+## [2.0.127] - 2026-05-28
+
+### Fixed
+
+- **ACT preview startup after multiline Network comments** — embedded Automation Compare Tool previews no longer stay on the `Loading...` screen after the Network comment line-break handling change. The generated webview script now keeps newline escape sequences valid before ACT's Angular renderer mounts.
+
+---
+
+## [2.0.123] - 2026-05-28
+
+### Fixed
+
+- **FBD row layout in ACT previews** — embedded Automation Compare Tool previews now detect the rendered diagram language per network and keep FBD operand labels on a single line, restoring the original FBD row layout while preserving the LAD wrapping fix.
+- **Multiline Network comments in ACT previews** — manual line breaks in Network comments are preserved in the embedded Automation Compare Tool view, matching the multiline layout shown in TIA Portal.
+
+### Changed
+
+- **LAD-only operand wrapping** — long operand label wrapping and collision avoidance now apply only inside `lad-network` diagrams; FBD networks still show expanded full names and enriched tooltips without generated multiline SVG rows.
+
+---
+
+## [2.0.119] - 2026-05-27
+
+### Added
+
+- **Variable comments in ACT tooltips** — embedded Automation Compare Tool previews now parse SimaticML member comments from the opened XML file and append them to LAD/FBD operand tooltips.
+- **Compact ACT preview controls** — the embedded ACT toolbar now includes quick toggles for Overview, Interface, Attributes and a Network collapse/expand-all action.
+
+### Changed
+
+- **Cleaner default ACT preview layout** — Overview, Interface, Attributes and the ACT status/title bar are hidden by default so the network diagram gets more usable space.
+- **Readable long LAD/FBD symbols** — full operand names are wrapped into compact SVG lines with collision avoidance and a background stroke so long symbols remain visible without covering contacts and coils.
+
+---
+
 ## [2.0.106] - 2026-05-11
 
 ### Added
@@ -120,7 +219,7 @@ Major version bump consolidating the autonomous-agent feature wave.
   - `TIA Import: Import Library Types` — export the entire Project Library Types tree
   - `TIA Import: Import Library Folder` — export a single user folder (recursive)
   - `TIA Import: Import Library Type` — export a single library type
-  Files land under `<workspace>/<projectName>/Library/Types/...`, mirroring the in-project folder structure. Master copies are intentionally not exported.
+    Files land under `<workspace>/<projectName>/Library/Types/...`, mirroring the in-project folder structure. Master copies are intentionally not exported.
 
 ### Changed
 
