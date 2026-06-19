@@ -111,6 +111,15 @@ class TiaConnectionTreeProvider {
             command: 'tia-import.toggleShowImportExportDetails',
             title: 'Toggle Log Details'
         }));
+        // CLI bridge toggle (always visible; lets users enable the localhost
+        // JSON bridge without opening Settings)
+        const cliEnabled = vscode.workspace
+            .getConfiguration('tiaImport')
+            .get('cli.enabled', false);
+        items.push(new ConnectionTreeItem('CLI Bridge', cliEnabled ? 'On' : 'Off', 'terminal', 'cliEnabled', {
+            command: 'tia-import.toggleCli',
+            title: 'Toggle CLI Bridge'
+        }));
         // Connection status
         if (this._connectionService.isConnected) {
             items.push(new ConnectionTreeItem('Status', 'Connected - Click to disconnect', 'plug', 'connectedStatus', {

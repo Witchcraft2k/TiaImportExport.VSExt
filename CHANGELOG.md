@@ -6,6 +6,28 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+## [3.0.12] - 2026-06-18
+
+### Changed
+
+- **Synchronized JS bundle with upstream 3.0.12** — the CLI bridge, Automation Compare Tool preview, and shared utilities (`out/`) are aligned with the author's published 3.0.12 build. The local TIA Portal project-server connection fix in the .NET wrapper (`TiaConnectionManager` / `ConnectionMethodsHandler` / `TiaConnector` / `TiaPortalService`) and the rebuilt V21 `TiaOpennessWrapper.dll` are preserved. JS↔wrapper method parity verified before merge (45/45 routed methods match).
+
+
+## [3.0.11] - 2026-06-17
+
+### Changed
+
+- **CLI bridge is now opt-in** — `tiaImport.cli.enabled` defaults to `false`. The localhost JSON listener no longer starts on activation and no `.tia/cli.json` state file is created until the user explicitly enables it. The setting is now hot-reloadable: toggling it on starts the bridge immediately and toggling it off stops the listener and removes the state file.
+
+### Added
+
+- **CLI Bridge toggle in the TIA Connection view** — a new `CLI Bridge On/Off` row sits next to *TIA Portal Vxx* / *Log Details*. Clicking it (or running `TIA Import: Toggle CLI Bridge`) flips `tiaImport.cli.enabled` without opening Settings.
+- **Start CLI Bridge action in the view title bar** — the terminal icon (`TIA Import: Start CLI Bridge`) is visible on the Connection view before connecting to TIA Portal. When the bridge is disabled, it shows an info prompt with **Enable now** / **Open Settings** actions; when enabled, it confirms the bridge is running.
+- **Friendly guidance when the bridge is off** — external scripts that try to use the bridge while it's disabled still get the existing `.tia/cli.json not found` error pointing them at `tiaImport.cli.enabled`; users invoking the action from the palette now get an actionable dialog instead of a silent no-op.
+- **ACT preview: per-network XML actions** — right-clicking a network in the embedded Automation Compare Tool preview now exposes new actions on the underlying SimaticML XML:
+  - **Open XML in network *N*** opens the source `.xml` file and jumps the editor to the matching `<SW.Blocks.CompileUnit>` (the Nth network in document order), so the user can inspect or hand-edit that exact network without scrolling.
+  - **Clear logic in network *N*** replaces only the `<NetworkSource>...</NetworkSource>` body of the selected network with a self-closing `<NetworkSource />`, preserving the network envelope (title, comment, programming language). The preview refreshes in-place after the file is saved. Useful for producing clean stubs before re-import to TIA Portal.
+  - These actions live alongside the existing **Remove network *N***. All three editors are text-based (they do not re-serialize the document through a generic XML library), so unrelated formatting is preserved and `git diff` review and TIA Portal round-trips stay clean.
 
 ## [3.0.0] - 2026-06-10
 

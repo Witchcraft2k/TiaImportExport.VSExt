@@ -2,7 +2,7 @@
 	"name": "tia-import",
 	"displayName": "TIA Portal Import",
 	"description": "Import/export PLC programs from/to Siemens TIA Portal using TIA Portal Openness API",
-	"version": "3.0.0",
+	"version": "3.0.12",
 	"license": "MIT",
 	"publisher": "MariuszCzyrnek",
 	"author": "Mariusz Czyrnek",
@@ -232,6 +232,11 @@
 				"icon": "$(terminal)"
 			},
 			{
+				"command": "tia-import.toggleCli",
+				"title": "TIA Import: Toggle CLI Bridge",
+				"icon": "$(terminal)"
+			},
+			{
 				"command": "tia-import.previewBlockWithAutomationCompare",
 				"title": "TIA Import: Preview XML with Automation Compare Tool",
 				"icon": "$(preview)"
@@ -374,6 +379,11 @@
 					"command": "tia-import.showLogs",
 					"when": "view == tiaProjectExplorer || view == tiaConnection",
 					"group": "navigation@5"
+				},
+				{
+					"command": "tia-import.startCli",
+					"when": "view == tiaConnection",
+					"group": "navigation@6"
 				}
 			],
 			"view/item/context": [
@@ -1490,8 +1500,8 @@
 				},
 				"tiaImport.cli.enabled": {
 					"type": "boolean",
-					"default": true,
-					"description": "Start the localhost-only JSON CLI bridge and write .tia/cli.json for external automation scripts."
+					"default": false,
+					"description": "Start the localhost-only JSON CLI bridge and write .tia/cli.json for external automation scripts. Disabled by default — enable only when you need to drive the extension from external scripts (PowerShell, Python, Node)."
 				}
 			}
 		}

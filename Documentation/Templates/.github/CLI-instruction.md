@@ -4,7 +4,16 @@ The TIA Import extension exposes a localhost-only JSON bridge for external scrip
 
 ## State File
 
-When VS Code activates the extension and `tiaImport.cli.enabled` is true, the extension writes:
+The CLI bridge is **opt-in and disabled by default**. Until it is enabled, no listener runs and no `.tia/` folder is created.
+
+Enable it in any of these ways:
+
+- Click the **CLI Bridge** row in the *TIA Connection* view (toggles between `Off` / `On`).
+- Click the **terminal** icon (*TIA Import: Start CLI Bridge*) in the *TIA Connection* view title bar.
+- Run the command **TIA Import: Toggle CLI Bridge** from the Command Palette.
+- Set `tiaImport.cli.enabled` to `true` in VS Code Settings.
+
+Once enabled, the extension writes:
 
 ```json
 {
@@ -22,7 +31,8 @@ Rules:
 - Read `.tia/cli.json` at runtime before every automation session.
 - Do not hard-code the port or token.
 - Do not commit `.tia/cli.json`.
-- Re-read the state file after VS Code reloads.
+- Re-read the state file after VS Code reloads or after the bridge is re-enabled.
+- If the file is missing, the bridge is disabled — enable `tiaImport.cli.enabled` and retry.
 
 ## Request Shape
 

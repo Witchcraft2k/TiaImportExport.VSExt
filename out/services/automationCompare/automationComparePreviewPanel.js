@@ -41,6 +41,7 @@ const vscode = __importStar(require("vscode"));
 const logger_1 = require("../../utils/logger");
 const assetRootLocator_1 = require("./preview/assetRootLocator");
 const previewHtmlBuilder_1 = require("./preview/previewHtmlBuilder");
+const networkXmlEditor_1 = require("./networkXmlEditor");
 /**
  * Track the editor column that currently hosts ACT preview tabs so that any
  * subsequent preview lands as another tab in the same group instead of being
@@ -162,6 +163,101 @@ async function openPanelWithPayloads(assetRoot, primaryFilePath, leftPayload, ri
             // only single-file previews react to ACT's runtime title updates.
             if (!isCompare) {
                 panel.title = `ACT: ${title}`;
+            }
+            return;
+        }
+        if (message.type === 'removeNetwork') {
+            if (isCompare) {
+                // Editing only allowed in single-file preview mode.
+                return;
+            }
+            const networkIndex = Number(message.networkIndex);
+            if (!Number.isInteger(networkIndex) || networkIndex < 1) {
+                return;
+            }
+            const confirm = await vscode.window.showWarningMessage(`Remove network ${networkIndex} from "${path.basename(filePath)}"?`, { modal: true, detail: 'This rewrites the SimaticML XML file on disk. Remaining networks are NOT renumbered.' }, 'Remove');
+            if (confirm !== 'Remove') {
+                return;
+            }
+            try {
+                const currentContent = await fs.promises.readFile(filePath, 'utf8');
+                const result = (0, networkXmlEditor_1.removeNetworkFromBlockXml)(currentContent, networkIndex);
+                await fs.promises.writeFile(filePath, result.updatedContent, 'utf8');
+                logger_1.Logger.success(`Removed network ${networkIndex} from ${filePath} (was ${result.totalNetworks} network(s), now ${result.totalNetworks - 1}).`);
+                // Rebuild the webview with the updated content. We keep the
+                // panel object — only its HTML is regenerated.
+                filePayload.content = result.updatedContent;
+                panel.webview.html = (0, previewHtmlBuilder_1.buildAutomationCompareHtml)(panel.webview, assetRoot, filePayload, rightPayload, leftTitle, rightTitle);
+            }
+            catch (error) {
+                const detail = error instanceof Error ? error.message : String(error);
+                logger_1.Logger.error(`Failed to remove network ${networkIndex} from ${filePath}: ${detail}`);
+                vscode.window.showErrorMessage(`Failed to remove network ${networkIndex}: ${detail}`);
+            }
+            return;
+        }
+        if (message.type === 'clearNetworkLogic') {
+            if (isCompare) {
+                return;
+            }
+            const networkIndex = Number(message.networkIndex);
+            if (!Number.isInteger(networkIndex) || networkIndex < 1) {
+                return;
+            }
+            const confirm = await vscode.window.showWarningMessage(`Clear logic in network ${networkIndex} of "${path.basename(filePath)}"?`, { modal: true, detail: 'The network envelope (title, comment, programming language) is preserved; only its <NetworkSource> body is emptied.' }, 'Clear logic');
+            if (confirm !== 'Clear logic') {
+                return;
+            }
+            try {
+                const currentContent = await fs.promises.readFile(filePath, 'utf8');
+                const result = (0, networkXmlEditor_1.clearNetworkLogic)(currentContent, networkIndex);
+                if (!result.changed) {
+                    logger_1.Logger.info(`Network ${networkIndex} in ${filePath} already has empty logic — nothing to clear.`);
+                    return;
+                }
+                await fs.promises.writeFile(filePath, result.updatedContent, 'utf8');
+                logger_1.Logger.success(`Cleared logic in network ${networkIndex} of ${filePath}.`);
+                filePayload.content = result.updatedContent;
+                panel.webview.html = (0, previewHtmlBuilder_1.buildAutomationCompareHtml)(panel.webview, assetRoot, filePayload, rightPayload, leftTitle, rightTitle);
+            }
+            catch (error) {
+                const detail = error instanceof Error ? error.message : String(error);
+                logger_1.Logger.error(`Failed to clear logic in network ${networkIndex} of ${filePath}: ${detail}`);
+                vscode.window.showErrorMessage(`Failed to clear logic in network ${networkIndex}: ${detail}`);
+            }
+            return;
+        }
+        if (message.type === 'openNetworkInXml') {
+            const networkIndex = Number(message.networkIndex);
+            if (!Number.isInteger(networkIndex) || networkIndex < 1) {
+                return;
+            }
+            // In compare mode we open the LEFT (primary) file — the right
+            // file is typically a git-revision snapshot in %TEMP%.
+            const targetPath = filePath;
+            try {
+                const currentContent = await fs.promises.readFile(targetPath, 'utf8');
+                const position = (0, networkXmlEditor_1.findCompileUnitPosition)(currentContent, networkIndex);
+                const document = await vscode.workspace.openTextDocument(vscode.Uri.file(targetPath));
+                const editor = await vscode.window.showTextDocument(document, {
+                    preview: false,
+                    viewColumn: vscode.ViewColumn.Beside
+                });
+                if (position) {
+                    const line = Math.max(0, position.line - 1);
+                    const col = Math.max(0, position.column - 1);
+                    const target = new vscode.Position(line, col);
+                    editor.selection = new vscode.Selection(target, target);
+                    editor.revealRange(new vscode.Range(target, target), vscode.TextEditorRevealType.InCenter);
+                }
+                else {
+                    logger_1.Logger.warn(`Network ${networkIndex} not found in ${targetPath}; opened file without jumping.`);
+                }
+            }
+            catch (error) {
+                const detail = error instanceof Error ? error.message : String(error);
+                logger_1.Logger.error(`Failed to open network ${networkIndex} in ${targetPath}: ${detail}`);
+                vscode.window.showErrorMessage(`Failed to open network ${networkIndex} in XML: ${detail}`);
             }
             return;
         }

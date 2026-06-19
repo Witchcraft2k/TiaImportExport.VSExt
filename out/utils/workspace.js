@@ -95,7 +95,7 @@ class WorkspaceManager {
     /**
      * Initialize workspace structure for TIA imports
      */
-    static async initializeWorkspaceStructure() {
+    static async initializeWorkspaceStructure(options = {}) {
         const exportPath = await this.getTiaExportPath();
         if (!exportPath) {
             return;
@@ -115,13 +115,17 @@ class WorkspaceManager {
                 await fs.promises.mkdir(dirPath, { recursive: true });
             }
         }
-        // Copy template files from extension's Documentation/Templates/
-        await this.copyTemplateFile('.gitignore', workspacePath);
-        await this.copyTemplateFile('CLAUDE.md', workspacePath);
-        await this.copyTemplateFile('AGENTS.md', workspacePath);
-        await this.copyTemplateDir('.github', workspacePath);
-        await this.copyTemplateDir('Tools', workspacePath);
-        await this.copyTemplateDir('UserFiles', workspacePath);
+        // Template files (.github copilot instructions, Tools/ scripts, AGENTS.md, etc.)
+        // are only copied when explicitly requested via the Init Workspace button
+        // or the prepare_workspace API — not on every TIA connect.
+        if (options.includeTemplates) {
+            await this.copyTemplateFile('.gitignore', workspacePath);
+            await this.copyTemplateFile('CLAUDE.md', workspacePath);
+            await this.copyTemplateFile('AGENTS.md', workspacePath);
+            await this.copyTemplateDir('.github', workspacePath);
+            await this.copyTemplateDir('Tools', workspacePath);
+            await this.copyTemplateDir('UserFiles', workspacePath);
+        }
         // UserFiles is a runtime output folder. Ensure it exists even if
         // the template directory is missing (e.g. empty dir not packed in VSIX).
         const userFilesPath = path.join(workspacePath, 'UserFiles');

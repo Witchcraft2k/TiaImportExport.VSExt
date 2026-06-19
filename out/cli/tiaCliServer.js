@@ -34,6 +34,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.startTiaCliServer = startTiaCliServer;
+exports.isTiaCliEnabled = isTiaCliEnabled;
+exports.promptEnableTiaCli = promptEnableTiaCli;
 const crypto = __importStar(require("crypto"));
 const fs = __importStar(require("fs"));
 const http = __importStar(require("http"));
@@ -68,37 +70,90 @@ const COMMANDS = [
     'get_logs'
 ];
 function startTiaCliServer(context, api) {
-    const enabled = vscode.workspace.getConfiguration('tiaImport').get('cli.enabled', true);
-    if (!enabled) {
-        logger_1.Logger.info('TIA CLI server disabled by tiaImport.cli.enabled');
-        return new vscode.Disposable(() => undefined);
-    }
-    const token = crypto.randomBytes(32).toString('hex');
-    const server = http.createServer((req, res) => {
-        void handleRequest(api, token, req, res);
-    });
-    server.on('error', error => {
-        logger_1.Logger.warn(`TIA CLI server error: ${error instanceof Error ? error.message : String(error)}`);
-    });
-    server.listen(0, HOST, () => {
-        const address = server.address();
-        if (!address || typeof address === 'string') {
-            logger_1.Logger.warn('TIA CLI server started without a TCP address');
+    let activeServer;
+    const start = () => {
+        if (activeServer) {
             return;
         }
-        const state = {
-            version: 1,
-            host: HOST,
-            port: address.port,
-            token
-        };
-        writeStateFile(context, state);
-        logger_1.Logger.info(`TIA CLI server listening on ${HOST}:${address.port}`);
+        const token = crypto.randomBytes(32).toString('hex');
+        const server = http.createServer((req, res) => {
+            void handleRequest(api, token, req, res);
+        });
+        server.on('error', error => {
+            logger_1.Logger.warn(`TIA CLI server error: ${error instanceof Error ? error.message : String(error)}`);
+        });
+        server.listen(0, HOST, () => {
+            const address = server.address();
+            if (!address || typeof address === 'string') {
+                logger_1.Logger.warn('TIA CLI server started without a TCP address');
+                return;
+            }
+            const state = {
+                version: 1,
+                host: HOST,
+                port: address.port,
+                token
+            };
+            writeStateFile(context, state);
+            logger_1.Logger.info(`TIA CLI server listening on ${HOST}:${address.port}`);
+        });
+        activeServer = { server, token };
+    };
+    const stop = () => {
+        if (!activeServer) {
+            return;
+        }
+        const { server, token } = activeServer;
+        activeServer = undefined;
+        try {
+            server.close();
+        }
+        catch {
+            // ignore
+        }
+        removeStateFile(context, token);
+        logger_1.Logger.info('TIA CLI server stopped');
+    };
+    const apply = () => {
+        const enabled = vscode.workspace.getConfiguration('tiaImport').get('cli.enabled', false);
+        if (enabled) {
+            start();
+        }
+        else {
+            stop();
+        }
+    };
+    apply();
+    const configWatcher = vscode.workspace.onDidChangeConfiguration(event => {
+        if (event.affectsConfiguration('tiaImport.cli.enabled')) {
+            apply();
+        }
     });
     return new vscode.Disposable(() => {
-        server.close();
-        removeStateFile(context, token);
+        configWatcher.dispose();
+        stop();
     });
+}
+function isTiaCliEnabled() {
+    return vscode.workspace.getConfiguration('tiaImport').get('cli.enabled', false);
+}
+async function promptEnableTiaCli() {
+    if (isTiaCliEnabled()) {
+        vscode.window.showInformationMessage('TIA Import: CLI bridge is already enabled. The .tia/cli.json state file is being written for external scripts.');
+        return true;
+    }
+    const enableNow = 'Enable now';
+    const openSettings = 'Open Settings';
+    const choice = await vscode.window.showInformationMessage('TIA Import: The CLI bridge is disabled. Enable the "tiaImport.cli.enabled" setting to allow external scripts to drive TIA Portal through localhost JSON requests.', enableNow, openSettings);
+    if (choice === enableNow) {
+        await vscode.workspace.getConfiguration('tiaImport').update('cli.enabled', true, vscode.ConfigurationTarget.Global);
+        vscode.window.showInformationMessage('TIA Import: CLI bridge enabled. A .tia/cli.json file will be created with the connection token.');
+        return true;
+    }
+    if (choice === openSettings) {
+        await vscode.commands.executeCommand('workbench.action.openSettings', 'tiaImport.cli.enabled');
+    }
+    return false;
 }
 async function handleRequest(api, token, req, res) {
     try {

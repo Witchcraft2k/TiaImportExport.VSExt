@@ -55,7 +55,7 @@ function registerUtilityCommands(ctx) {
         if (!await workspace_1.WorkspaceManager.ensureWorkspace()) {
             return;
         }
-        await workspace_1.WorkspaceManager.initializeWorkspaceStructure();
+        await workspace_1.WorkspaceManager.initializeWorkspaceStructure({ includeTemplates: true });
         logger_1.Logger.success('Workspace prepared: templates and export folder created');
         vscode.window.showInformationMessage('TIA Import: Workspace prepared — .github/ templates and TiaExport/ folder created.');
     });
@@ -132,6 +132,15 @@ function registerUtilityCommands(ctx) {
         await vscode.workspace.getConfiguration('tiaImport').update('showImportExportDetails', newValue, vscode.ConfigurationTarget.Global);
         connectionTreeProvider.refresh();
         vscode.window.showInformationMessage(`Log Details: ${newValue ? 'On' : 'Off'}`);
+    });
+    (0, commandContext_1.register)(ctx, 'tia-import.toggleCli', async () => {
+        const current = vscode.workspace.getConfiguration('tiaImport').get('cli.enabled') ?? false;
+        const newValue = !current;
+        await vscode.workspace.getConfiguration('tiaImport').update('cli.enabled', newValue, vscode.ConfigurationTarget.Global);
+        connectionTreeProvider.refresh();
+        vscode.window.showInformationMessage(newValue
+            ? 'TIA Import: CLI bridge enabled. A .tia/cli.json file will be created with the connection token.'
+            : 'TIA Import: CLI bridge disabled.');
     });
     (0, commandContext_1.register)(ctx, 'tia-import.toggleAutoExportCrossReferences', async () => {
         const current = vscode.workspace.getConfiguration('tiaImport').get('autoExportCrossReferences') || 'ask';

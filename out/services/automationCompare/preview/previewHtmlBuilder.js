@@ -66,7 +66,8 @@ function buildAutomationCompareHtml(webview, assetRoot, filePayload, rightPayloa
         leftFileJson: leftPayloadJson,
         rightFileJson: rightPayloadJson,
         title1Json: leftTitleJson,
-        title2Json: rightTitleJson
+        title2Json: rightTitleJson,
+        editingEnabledJson: (0, previewHtmlHelpers_1.safeScriptJson)(rightPayload === undefined)
     });
     const moduleBootstrap = (0, previewClientScript_1.buildActModuleBootstrap)({
         polyfillsImportJson: (0, previewHtmlHelpers_1.safeScriptJson)(polyfillsUri.toString()),

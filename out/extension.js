@@ -122,7 +122,10 @@ async function activate(context) {
             (0, tools_1.registerLanguageModelTools)(context, api);
             (0, chatParticipant_1.registerChatParticipant)(context);
             context.subscriptions.push((0, tiaCliServer_1.startTiaCliServer)(context, api));
-            context.subscriptions.push(vscode.commands.registerCommand('tia-import.startCli', () => ({ success: true })));
+            context.subscriptions.push(vscode.commands.registerCommand('tia-import.startCli', async () => {
+                const enabled = await (0, tiaCliServer_1.promptEnableTiaCli)();
+                return { success: enabled };
+            }));
         }
         catch (lmErr) {
             logger_1.Logger.warn('Failed to register Language Model integration (non-fatal)', lmErr);

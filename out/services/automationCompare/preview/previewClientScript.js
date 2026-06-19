@@ -22,6 +22,7 @@ function buildActRuntimeScript(data) {
       const vscode = acquireVsCodeApi();
       const actBaseHref = ${data.baseHrefJson};
       const actAssetBaseHref = ${data.assetBaseHrefJson};
+      const actEditingEnabled = ${data.editingEnabledJson} === true;
       const statusElement = document.getElementById('act-preview-status');
       const statusTitle = statusElement?.querySelector('.title');
       const statusDetail = statusElement?.querySelector('.detail');
@@ -548,6 +549,133 @@ function buildActRuntimeScript(data) {
         applyPendingNetworkBulkAction();
       }
 
+      // -------------------------------------------------------------------
+      // Network removal context menu (single-file preview only).
+      // -------------------------------------------------------------------
+      function findRenderedNetworkHost(target) {
+        if (!target || typeof target.closest !== 'function') {
+          return null;
+        }
+        return (
+          target.closest('network-view') ||
+          target.closest('lad-network') ||
+          target.closest('fbd-network') ||
+          target.closest('app-network') ||
+          (target.closest('.network-body') ? target.closest('.network-body').parentElement : null)
+        );
+      }
+
+      function getNetworkNumberForHost(host) {
+        if (!host) {
+          return 0;
+        }
+        const body = host.querySelector ? host.querySelector('.network-body') : null;
+        for (const className of Array.from(body?.classList || [])) {
+          if (/^\\d+$/.test(className)) {
+            return Number(className);
+          }
+        }
+        // Fallback: index of this host among siblings of the same tag.
+        const all = Array.from(document.querySelectorAll(host.tagName.toLowerCase()));
+        const index = all.indexOf(host);
+        return index >= 0 ? index + 1 : 0;
+      }
+
+      let actContextMenuElement = null;
+      function hideNetworkContextMenu() {
+        if (actContextMenuElement && actContextMenuElement.parentNode) {
+          actContextMenuElement.parentNode.removeChild(actContextMenuElement);
+        }
+        actContextMenuElement = null;
+      }
+
+      function showNetworkContextMenu(x, y, networkNumber) {
+        hideNetworkContextMenu();
+        const menu = document.createElement('div');
+        menu.id = 'act-network-context-menu';
+        menu.setAttribute('role', 'menu');
+
+        if (actEditingEnabled) {
+          const removeItem = document.createElement('button');
+          removeItem.type = 'button';
+          removeItem.setAttribute('role', 'menuitem');
+          removeItem.textContent = 'Remove network ' + networkNumber;
+          removeItem.addEventListener('click', () => {
+            hideNetworkContextMenu();
+            post('removeNetwork', { networkIndex: networkNumber });
+          });
+          menu.appendChild(removeItem);
+
+          const clearItem = document.createElement('button');
+          clearItem.type = 'button';
+          clearItem.setAttribute('role', 'menuitem');
+          clearItem.textContent = 'Clear logic in network ' + networkNumber;
+          clearItem.addEventListener('click', () => {
+            hideNetworkContextMenu();
+            post('clearNetworkLogic', { networkIndex: networkNumber });
+          });
+          menu.appendChild(clearItem);
+        }
+
+        const openItem = document.createElement('button');
+        openItem.type = 'button';
+        openItem.setAttribute('role', 'menuitem');
+        openItem.textContent = 'Open network ' + networkNumber + ' in XML';
+        openItem.addEventListener('click', () => {
+          hideNetworkContextMenu();
+          post('openNetworkInXml', { networkIndex: networkNumber });
+        });
+        menu.appendChild(openItem);
+
+        document.body.appendChild(menu);
+        actContextMenuElement = menu;
+
+        // Constrain to viewport.
+        const rect = menu.getBoundingClientRect();
+        const maxLeft = Math.max(0, window.innerWidth - rect.width - 4);
+        const maxTop = Math.max(0, window.innerHeight - rect.height - 4);
+        menu.style.left = Math.min(x, maxLeft) + 'px';
+        menu.style.top = Math.min(y, maxTop) + 'px';
+      }
+
+      function installNetworkContextMenu() {
+        document.addEventListener('contextmenu', event => {
+          // Ignore ACT's own controls / our toolbar.
+          if (event.target && typeof event.target.closest === 'function' && event.target.closest('#act-layout-controls, #act-network-context-menu')) {
+            return;
+          }
+          const host = findRenderedNetworkHost(event.target);
+          if (!host) {
+            hideNetworkContextMenu();
+            return;
+          }
+          const networkNumber = getNetworkNumberForHost(host);
+          if (!networkNumber) {
+            hideNetworkContextMenu();
+            return;
+          }
+          event.preventDefault();
+          event.stopPropagation();
+          showNetworkContextMenu(event.clientX, event.clientY, networkNumber);
+        }, true);
+        document.addEventListener('click', event => {
+          if (!actContextMenuElement) {
+            return;
+          }
+          if (event.target && typeof event.target.closest === 'function' && event.target.closest('#act-network-context-menu')) {
+            return;
+          }
+          hideNetworkContextMenu();
+        }, true);
+        document.addEventListener('keydown', event => {
+          if (event.key === 'Escape') {
+            hideNetworkContextMenu();
+          }
+        });
+        window.addEventListener('blur', hideNetworkContextMenu);
+        window.addEventListener('scroll', hideNetworkContextMenu, true);
+      }
+
       function toActAssetUrl(value) {
         if (typeof value !== 'string') {
           return value;
@@ -996,10 +1124,12 @@ function buildActRuntimeScript(data) {
         document.addEventListener('DOMContentLoaded', hideStatusBar, { once: true });
         document.addEventListener('DOMContentLoaded', startOperandLabelExpander, { once: true });
         document.addEventListener('DOMContentLoaded', installLayoutControls, { once: true });
+        document.addEventListener('DOMContentLoaded', installNetworkContextMenu, { once: true });
       } else {
         hideStatusBar();
         startOperandLabelExpander();
         installLayoutControls();
+        installNetworkContextMenu();
       }
 
       function normalizeHistoryUrl(url) {

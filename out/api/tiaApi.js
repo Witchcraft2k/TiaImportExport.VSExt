@@ -107,7 +107,7 @@ class TiaApi {
             if (!workspacePath) {
                 return err('No workspace folder is open. Open a workspace folder before calling prepare_workspace.');
             }
-            await workspace_1.WorkspaceManager.initializeWorkspaceStructure();
+            await workspace_1.WorkspaceManager.initializeWorkspaceStructure({ includeTemplates: true });
             return ok({ workspacePath }, 'Workspace prepared - templates copied from Documentation/Templates.');
         }
         catch (e) {
