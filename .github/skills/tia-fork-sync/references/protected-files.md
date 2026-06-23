@@ -61,11 +61,14 @@ A skipped version's `bin/Release/net48/V<n>/TiaOpennessWrapper.dll` keeps its ex
 
 ### The goal is "working", not "every DLL has the fix"
 
-⚠️ The Project Server fix is **V21-specific**. Empirically (user-verified 2026-06-19), V19's
-project-server connect **works with the author's unfixed DLL** — V19 does NOT need the fix. So a
-version whose DLL matches the author baseline is **not necessarily broken**. Do NOT assume
-"baseline-match = needs fixing". Verify by smoke-test (`tiaImport.tiaPortalVersion: <n>` → connect
-to a Project Server → list/select project).
+⚠️ The Project Server fix is **required by both V19 and V21** (corrected 2026-06-23). The earlier
+note (2026-06-19) that "V19 works with the author's unfixed DLL" was a misread: V19 connect
+**without** the fix enumerates only local projects and returns **"No projects found"** against a
+Project Server — exactly the symptom the fix resolves. So a version whose DLL matches the author
+baseline IS broken for Project-Server use (V19 proves it). Do NOT assume "baseline-match = still
+fine". Verify by smoke-test (`tiaImport.tiaPortalVersion: <n>` → connect to a Project Server →
+list/select project); if it returns "No projects found", build + deploy a fixed DLL per
+[fix-deploy.md](fix-deploy.md).
 
 ### Verify after every build
 
@@ -74,32 +77,38 @@ pwsh ./.github/skills/tia-fork-sync/scripts/verify-all-versions-fixed.ps1 -Verif
 ```
 
 It reports each version as **FIXED** (differs from author baseline `50d1984`), **BASELINE-MATCH**
-(== baseline; may still work — V19 does), or **NOT-INSTALLED** (TIA Portal V<n> not installed).
-It flags a version only if TIA Portal for it is installed AND it is BASELINE-MATCH AND it is NOT in
-`-VerifiedWorking` (genuinely suspect). NOT-INSTALLED versions never cause a failure.
+(== baseline — known-broken for Project Server on V19, genuinely suspect on any
+TIA-Portal-installed version not in `-VerifiedWorking`), or **NOT-INSTALLED** (TIA Portal V<n> not
+installed). It flags a version only if TIA Portal for it is installed AND it is BASELINE-MATCH AND
+it is NOT in `-VerifiedWorking`. NOT-INSTALLED versions never cause a failure.
 
 ### To resolve a genuinely-suspect version (installed, baseline-match, not working)
 
-1. Smoke-test it first — it may work without the fix (like V19).
-2. If it does NOT work and needs the fix: install the **TIA Portal Openness** option for that
-   version (Siemens installer / Control Panel → TIA Portal V<n> → Modify → check "TIA Portal
-   Openness") so `PublicAPI\V<n>\net48` appears, then `npm run build:dotnet`; or copy
-   `Siemens.Engineering*.dll` into `dotnet/refs/V<n>/` and re-run the build.
+1. Smoke-test it first — connect to a Project Server and check projects populate.
+2. If it does NOT work ("No projects found"), it needs the fix. For V19 (installed, flat
+   `PublicAPI\V19\` layout, no `net48` subfolder) **build targeted** — see [fix-deploy.md](fix-deploy.md).
+   For other versions: install the **TIA Portal Openness** option for that version (Siemens
+   installer / Control Panel → TIA Portal V<n> → Modify → check "TIA Portal Openness") so
+   `PublicAPI\V<n>\net48` appears (or copy `Siemens.Engineering*.dll` into `dotnet/refs/V<n>/`),
+   then **build targeted** (`dotnet build ... /p:OpennessTiaMajor=<n>` — never `npm run build:dotnet`,
+   which cleans `bin/Release/net48/` first and skips non-`net48` layouts).
 3. If the version is **NOT-INSTALLED** (cannot be tested), record it as a Known Limitation — do not
    claim it is fixed or broken.
 
-### Verified state (2026-06-19, user-confirmed)
+### Verified state (2026-06-23, user-confirmed)
 
-| Version | TIA Portal | Wrapper DLL | Project-server connect | Verdict |
+| Version | TIA Portal | Wrapper DLL (installed author ext.) | Project-server connect | Verdict |
 |---|---|---|---|---|
-| V18 | not installed (folder absent) | stale author DLL | unverifiable | NOT-INSTALLED |
-| V19 | installed | author DLL (no fix), hash `FEAC0EE9…` | **works** (`tiaPortalVersion: 19`) | WORKS WITHOUT FIX |
-| V20 | not installed (stub folder: only `Lib/`, no `tiaap.exe`, no `PublicAPI`) | stale author DLL | unverifiable | NOT-INSTALLED |
-| V21 | installed | fixed DLL (Multiuser fix), hash `4D59C142…` | **works** (with fix) | FIX REQUIRED + PRESENT |
+| V18 | not installed (folder absent) | n/a | unverifiable | NOT-INSTALLED |
+| V19 | installed | fixed DLL built targeted from fork source (replaces author `FEAC0EE9…`) | **works** (with fix, user-verified 2026-06-23) | FIX REQUIRED + PRESENT |
+| V20 | not installed (stub folder: only `Lib/`, no `tiaap.exe`, no `PublicAPI`) | n/a | unverifiable | NOT-INSTALLED |
+| V21 | installed | fixed DLL (Multiuser fix), hash `4D59C142…` (short) / `41A930525941E6F2…` (SHA256) | **works** (with fix, user-verified 2026-06-23) | FIX REQUIRED + PRESENT |
 
-Only `V21/TiaOpennessWrapper.dll` appears in `git diff 50d1984 HEAD -- dotnet/**/bin/**`. The V19
-DLL is byte-identical to the author baseline across workspace / installed extension / git, yet V19
-works — confirming the fix is not required for V19.
+The earlier "V19 works without fix" table row (2026-06-19) was retracted. Deploying the fix into
+the author extension uses the lighter [fix-deploy.md](fix-deploy.md) workflow: rebuild the fixed
+wrapper per version (V21 from the committed DLL, V19 via targeted build because its flat
+`PublicAPI\V19\` layout is wrongly skipped by `build-dotnet.js`), co-locate the 15 .NET deps
+(incl. the Openness Resolver) alongside the wrapper, and swap with the locked-DLL rename-trick.
 
 ## How to re-verify the fix is intact after a sync
 

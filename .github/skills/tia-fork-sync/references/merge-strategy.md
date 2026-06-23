@@ -78,22 +78,25 @@ fork edits to them.
 3. Use the **exact** method name string the JS passes to `callDotNet`/`safeCall`.
 4. Preserve all `Siemens.Engineering.Multiuser` / Project Server code — see
    [protected-files.md](./protected-files.md).
-5. Rebuild: `npm run build:dotnet` (compiles **each version whose Openness PublicAPI refs are
-   available** from the fixed source). Versions lacking `PublicAPI\V<n>\net48` (and with no
-   `dotnet/refs/V<n>` fallback) are **skipped** — their DLL is unchanged. ⚠️ Unchanged ≠ broken:
-   V19 works with the unchanged author DLL (see § "All-versions fix verification").
+5. Rebuild: for V21 `npm run build:dotnet` works (nested `PublicAPI\V21\net48` matches the
+   script's precheck). For V19 its flat `PublicAPI\V19\` (no `net48` subfolder) is wrongly **skipped**
+   by `build-dotnet.js` — build V19 **targeted** (`dotnet build … /p:OpennessTiaMajor=19`). ⚠️ Do NOT
+   rely on "skipped = fine": V19 with the author DLL returns **"No projects found"** against a
+   Project Server (user-verified 2026-06-23) — it needs the fix.
 6. **Verify the per-version working state** (see § "All-versions fix verification" below).
 7. Re-run `npm run test:method-parity` until green.
 
-### All-versions fix verification (goal: "working", not "every DLL has the fix")
+### All-versions fix verification (goal: "every version the user runs works")
 
-The fix lives in **shared C# source with no `#if V18/V19/V20/V21` conditionals**, so a clean rebuild
-fixes every version **that actually gets built**. The build script skips versions lacking Openness
-reference assemblies, leaving their DLL unchanged.
+The fix lives in **shared C# source with no `#if V18/V19/V20/V21` conditionals**, so a rebuild
+fixes every version **that actually gets built**. `build-dotnet.js` skips versions lacking the
+nested `PublicAPI\V<n>\net48` directory, leaving their DLL unchanged.
 
-⚠️ **The fix is V21-specific.** V19's project-server connect **works with the author's unfixed DLL**
-(user-verified 2026-06-19, `tiaPortalVersion: 19`). So "DLL == author baseline" does NOT mean
-"broken". The goal is "every version the user runs works", not "every DLL carries the fix".
+⚠️ **The fix is required by BOTH V19 and V21** (corrected 2026-06-23). V19 connect with the
+author's unfixed DLL returns **"No projects found"** against a Project Server (exactly the symptom
+the fix resolves). So "DLL == author baseline" DOES mean "broken for Project-Server use" — do NOT
+assume a skipped version is still working. Build skipped-but-installed versions **targeted**
+(bypassing `build-dotnet.js` which also `cleanOutputRoot()`s first).
 
 Verify with:
 
@@ -104,23 +107,29 @@ pwsh ./scripts/verify-all-versions-fixed.ps1 -VerifiedWorking V19,V21
 It hashes each `V18/V19/V20/V21` `TiaOpennessWrapper.dll` against the author baseline (commit
 `50d1984`, the v3.0.0 import) and reports:
 - **FIXED** — differs from author baseline (rebuilt with the fix).
-- **BASELINE-MATCH** — == author baseline (no fix). May still work (V19 does).
+- **BASELINE-MATCH** — == author baseline (no fix). For V19 this is **known-broken** for Project-Server
+  use ("No projects found", 2026-06-23); for other installed versions it is genuinely suspect.
+  Flagged when TIA Portal for that version IS installed AND it is NOT in `-VerifiedWorking`.
 - **NOT-INSTALLED** — TIA Portal V<n> not installed (folder absent or stub); unverifiable.
 
 It flags a version only if TIA Portal for it is installed AND it is BASELINE-MATCH AND it is NOT in
 `-VerifiedWorking` (genuinely suspect). To resolve a flagged version:
 
 - **Smoke-test first** (`tiaImport.tiaPortalVersion: <n>` → connect to a Project Server). If it
-  works, add it to `-VerifiedWorking`.
-- If it does NOT work and needs the fix: install the TIA Portal Openness option for that version
-  (Siemens installer → Modify → "TIA Portal Openness") so `PublicAPI\V<n>\net48` appears, then
-  `npm run build:dotnet`; or copy `Siemens.Engineering*.dll` into `dotnet/refs/V<n>/` and rebuild.
+  works (projects populate), add it to `-VerifiedWorking`.
+- If it does NOT work ("No projects found"), it needs the fix. For V19 (installed, flat
+  `PublicAPI\V19\` layout) build **targeted** — see [fix-deploy.md](fix-deploy.md). For other
+  versions: install the TIA Portal Openness option so `PublicAPI\V<n>\net48` appears (or copy
+  `Siemens.Engineering*.dll` into `dotnet/refs/V<n>/`), then build targeted
+  (`dotnet build … /p:OpennessTiaMajor=<n>` — never `npm run build:dotnet`, which cleans
+  `bin/Release/net48/` first).
 - **NOT-INSTALLED** versions are a known limitation — record in changelog `### Known Limitations` +
   MemPalace as "unverifiable (TIA Portal not installed)". Do not claim fixed or broken.
 
-**Verified 2026-06-19 state (user-confirmed):**
+**Verified 2026-06-23 state (user-confirmed):**
 - V21 — FIXED, fix required + present, works.
-- V19 — BASELINE-MATCH (author DLL, hash `FEAC0EE9…`), **works without fix** (user-verified).
+- V19 — FIXED via targeted build, fix required + present, works (corrected from the 2026-06-19
+  "works without fix" note — that was a misread; V19 baseline returns "No projects found").
 - V18 — NOT-INSTALLED (folder absent), unverifiable.
 - V20 — NOT-INSTALLED (stub folder: only `Lib/`, no executable, no `PublicAPI`), unverifiable.
 

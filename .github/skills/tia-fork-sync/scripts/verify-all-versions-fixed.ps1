@@ -5,15 +5,17 @@
 
 .DESCRIPTION
   The fix lives in shared C# source with no #if V18/V19/V20/V21 conditionals. `npm run build:dotnet`
-  rebuilds each version from that source, but SKIPS any version whose Openness PublicAPI reference
-  assemblies are missing. IMPORTANT: the fix is V21-SPECIFIC — V19's project-server connect works
-  with the author's UNFIXED DLL (user-verified 2026-06-19). So "DLL == author baseline" does NOT
-  mean "broken". The goal of this script is "every version the user runs works", not "every DLL
-  carries the fix".
+  rebuilds each version from that source, but SKIPS any version whose nested `PublicAPI\V<n>\net48`
+  reference directory is missing. IMPORTANT (corrected 2026-06-23): the fix is required by BOTH V19
+  and V21 — V19 connect with the author's UNFIXED DLL returns "No projects found" against a Project
+  Server (user-verified 2026-06-23). So "DLL == author baseline" DOES mean "broken for Project-Server
+  use". The goal of this script is to surface per-version state; fix any flagged version via the
+  targeted build in references/fix-deploy.md.
 
   Per version it reports:
     FIXED           = DLL differs from the author baseline (rebuilt with the fix)
-    BASELINE-MATCH  = DLL == author baseline (no fix). May still work (V19 does).
+    BASELINE-MATCH  = DLL == author baseline (no fix). Known-broken for V19 (Project Server);
+                      genuinely suspect for any TIA-Portal-installed version not in -VerifiedWorking.
     NOT-INSTALLED   = TIA Portal V<n> not installed (folder absent, or a stub with no executable);
                       unverifiable — never causes a failure.
     MISSING-DLL     = TIA Portal installed but no wrapper DLL present (inconsistent — investigate).

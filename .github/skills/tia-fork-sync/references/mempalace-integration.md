@@ -38,9 +38,10 @@ mcp_mempalace_mempalace_diary_read(agent_name="tia-fork-sync", last_n=5)
 
 - The **fix's exact file locations** (the four protected C# files) — confirm they still match before
   relying on them.
-- The **current per-version working state** (`working_versions` + `fix_required_for` facts) — tells
-  you which of V18/V19/V20/V21 are FIXED vs BASELINE-MATCH vs NOT-INSTALLED before you build, so step
-  7 is a confirmation, not a discovery. Note: the fix is V21-specific; V19 works without it.
+- The **current per-version working state** (`working_versions` fact) — tells you which of
+  V18/V19/V20/V21 are FIXED vs BASELINE-MATCH vs NOT-INSTALLED before you build, so step 7 is a
+  confirmation, not a discovery. Note (2026-06-23): the fix is required by **both V19 and V21**;
+  the earlier "V19 works without fix" note was retracted.
 - **Prior gotchas**: the `--no-dependencies` VSIX pitfall, the locked-DLL rename-trick, the
   Openness-PublicAPI-missing skip, the `node_modules`-copy-not-`npm-install` rule.
 - The **author baseline commit** (`50d1984` = the v3.0.0 import) used for baseline-DLL detection.
@@ -64,9 +65,9 @@ mcp_mempalace_mempalace_diary_write(
   topic="fork-sync")
 ```
 
-Example (2026-06-19, after the all-versions correction):
+Example (2026-06-23, after the V19-correction + Quick Fix Deploy of the fix into 3.0.57):
 ```
-scope:sync-fork-3.0.12|outcome:js-merged+vsix-built+overlay-installed|evidence:method-parity-46/46+V21-fixed+V19-works-without-fix|unresolved:v18/v20-not-installed
+scope:fix-deploy-3.0.57|outcome:v19+v21-fixed-dlls-swapped+co-located-deps+rename-trick|evidence:v21-fixed-DLL-41A93052+v19-targeted-build-95B8C4AA+project-server-connect-works|unresolved:v18/v20-not-installed+software-unit-tools-unimplemented(6-method-parity-gap)
 ```
 
 ### 2b. Knowledge graph facts — ONLY if a stable fact changed
@@ -85,15 +86,13 @@ mcp_mempalace_mempalace_kg_add(subject="TiaImportExport.VSExt", predicate="sync_
 # fix_location is split into one fix_in_file fact per C# file (object must be <=128 chars).
 
 # Per-version working state — invalidate + re-add when it changes.
-# IMPORTANT: the fix is V21-specific; V19 works WITHOUT the fix (user-verified 2026-06-19).
-# Do NOT use a "fixed_in_versions" fact that implies every version must carry the fix.
-mcp_mempalace_mempalace_kg_add(subject="TiaImportExport.VSExt project server fix",
-  predicate="fix_required_for", object="V21 only (fix is V21-specific; V19 works with author DLL)",
-  valid_from="2026-06-19")
+# IMPORTANT (corrected 2026-06-23): the fix is required by BOTH V19 and V21. The earlier
+# "V19 works WITHOUT the fix" note (2026-06-19) was a misread — V19 baseline returns
+# "No projects found" against a Project Server. Use a single `working_versions` fact.
 mcp_mempalace_mempalace_kg_add(subject="TiaImportExport.VSExt project server fix",
   predicate="working_versions",
-  object="V21 fix reqd+present; V19 works w/o fix (user-verified); V18/V20 not installed",
-  valid_from="2026-06-19")
+  object="V21 + V19 both fix required+present (user-verified 2026-06-23); V18/V20 not installed",
+  valid_from="2026-06-23")
 # If the set later changes (e.g. V20 gets installed + Openness + rebuilt + verified):
 # mcp_mempalace_mempalace_kg_invalidate(subject="TiaImportExport.VSExt project server fix",
 #   predicate="working_versions", object="<previous object>", ended="<date>")

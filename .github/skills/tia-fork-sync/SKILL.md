@@ -1,29 +1,48 @@
 ---
 name: tia-fork-sync
-description: "Sync this TIA Portal Import fork with the author's latest published VSIX and ship it with the TIA Portal Project Server / multiuser Tia Connect fix. Use when pulling author updates from the installed VS Code extension into the workspace fork; merging out/ compiled JS, package.json, changelog from the installed extension; preserving and rebuilding the .NET wrapper project-server fix across ALL TIA versions (V18/V19/V20/V21); building and installing the VSIX (overlay-install into a running VS Code via the locked-DLL rename-trick); validating JS↔.NET method parity; and capturing/retrieving sync lessons through MemPalace. Triggers: 'sync fork', 'pull author updates', 'merge installed extension', 'update from VSIX', 'tia fork sync', 'project server fix', 'multiuser tia connect', 'reconcile installed extension', 'build vsix', 'install extension', 'fix v19 v20 project server', 'rebuild wrapper all versions'."
-argument-hint: "[-Apply]  # dry-run by default; add -Apply to copy out/ files from the installed VSIX"
+description: "Install the TIA Portal Project Server / multiuser `Tia Connect` fix into the author's freshly-installed TIA Portal Import VS Code extension (Quick Fix Deploy — no VSIX build), for V19 and V21, by rebuilding the fixed .NET wrapper from the fork source and swapping it (with co-located deps + the locked-DLL rename-trick) into the installed extension folder. The deeper full-feature-sync + VSIX path is demoted to an Advanced appendix (used only when an upstream feature must actually work through the wrapper). MemPalace-backed: retrieves fix location + per-version working state before, captures diary/KG facts after. Triggers: 'install the fix', 'deploy project server fix', 'tia fix v19 v21', 'project server fix', 'multiuser tia connect', 'sync fork', 'pull author updates', 'merge installed extension', 'update from VSIX', 'tia fork sync', 'reconcile installed extension', 'fix v19 v20 project server'."
+argument-hint: "# default = Quick Fix Deploy (install the fix into the installed extension); the Advanced full-merge+VSIX path is in the appendix"
 user-invocable: true
 ---
 
-# TIA Portal Import — Fork Sync, Build & Install (MemPalace-backed)
+# TIA Portal Import — Project Server Fix Deploy (MemPalace-backed)
 
-Syncs **this fork** (workspace, carries the TIA Portal **Project Server / multiuser** `Tia Connect` fix)
-with the **author's latest published extension** that is installed in VS Code, then **builds and
-installs** the merged result so the fix ships with the author's newest features. The author does not
-publish the full source on GitHub, so upstream changes are recovered from the **installed VSIX**
-(`~/.vscode/extensions/mariuszcz...tia-import-<version>/`), which ships the compiled `out/` JS, the
-`package.json`, the `changelog.md` and resources — but **not** the C# wrapper source.
+The **default job** is installing the fork's **Project Server / multiuser** `Tia Connect` fix into the
+author's just-installed `TIA Portal Import` VS Code extension so it can load multiuser projects from a
+TIA Portal Project Server (the author's published VSIX ships a wrapper built **without** the fix). For
+this user the supported versions are **V19 and V21**; V18/V20 are not installed (unverifiable). The
+author publishes no full source and no C# wrapper source — only the compiled `out/` JS, `package.json`,
+`changelog.md`, and resources via the installed VSIX — so the fix is recovered from **this fork's** C#
+source and rebuilt per version.
 
-This skill is **MemPalace-backed**: it retrieves prior sync lessons and the fix's exact location
-before starting, and captures durable outcomes (new gotchas, the all-versions fix state, install
-procedures) when done. See [mempalace-integration.md](./references/mempalace-integration.md).
+The skill is **MemPalace-backed**: it retrieves prior sync lessons and the fix's exact location before
+starting, and captures durable outcomes (new gotchas, the per-version working state, the deploy
+procedure) when done. See [mempalace-integration.md](./references/mempalace-integration.md).
 
 ## When to use
 
-- After installing a newer `TIA Portal Import` extension and you want its changes in your fork.
-- User says "pull the changes from the installed version", "sync my fork with the author's update",
-  "merge the VSIX into my project-server-fixed version", "/tia-fork-sync".
-- Before any release that must include both the author's latest features and the Project Server fix.
+- **Default:** user installed a newer `TIA Portal Import` extension and wants *the Project Server fix*
+  working on it — follow the **Quick Fix Deploy** procedure below. (V19 and V21 supported.)
+- User says "install the fix", "deploy the project server fix", "make my fix work on the new version",
+  "/tia-fork-sync".
+- **Advanced (appendix below):** the user explicitly wants an upstream feature (e.g. Software Units) to
+  actually work through the wrapper — then the full feature merge + VSIX path applies. Do **not** take
+  this heavier path by reflex; the deploy path is the default.
+
+## Default mode — Quick Fix Deploy (no VSIX)
+
+The common case is "the author released a newer extension; I just need *my* Project
+Server (multiuser `Tia Connect`) fix to work on it, plus V19 and V21 are the versions
+I run." That is the **Quick Fix Deploy** procedure below — no full merge, no VSIX build.
+It rebuilds the fixed wrapper from the fork source (V21 from the committed DLL,
+V19 via a targeted build), co-locates the wrapper's 15 .NET deps alongside it into the
+installed author extension folder, and swaps the fixed DLL in with the locked-DLL
+rename-trick. Verified working **2026-06-23** on installed `3.0.57` (both V21 and V19).
+
+The deeper **full feature sync + VSIX** path (pulling the author's new JS features into
+the fork and shipping a packaged VSIX) is relegated to [§ Advanced](#advanced--full-feature-sync-vsix-build)
+at the end — use it **only** when the user wants an upstream feature (e.g. Software
+Units) to actually work through the wrapper, not merely load.
 
 ## Verified facts about this fork (do NOT rediscover — rely on these)
 
@@ -52,306 +71,144 @@ procedures) when done. See [mempalace-integration.md](./references/mempalace-int
    `C:\Program Files\Siemens\Automation\Portal V<n>\PublicAPI\V<n>\net48` **directory** is missing
    (it checks the dir, not a specific DLL — the folder holds `Siemens.Engineering.Base.dll` etc.),
    or the `dotnet/refs/V<n>` fallback. A skipped version's DLL is **left unchanged** (the pre-fix
-   binary). ⚠️ Unchanged ≠ broken — V19 works with the unchanged author DLL (see fact 7).
-7. **VERIFIED STATE (2026-06-19, user-confirmed): the fix is V21-SPECIFIC. V19 works WITHOUT it.**
-   - **V21 — fix REQUIRED and present.** Only V21 has `PublicAPI\V21\net48`; the V21 DLL was rebuilt
-     with the fix (git: only V21 DLL changed since the v3.0.0 import). V21 project-server connect
-     needs the fix and works with it.
-   - **V19 — works WITHOUT the fix.** User-verified 2026-06-19 with `tiaImport.tiaPortalVersion: 19`:
-     project-server connect works using the **author's unfixed V19 DLL** (workspace == installed ==
-     author baseline, hash `FEAC0EE9…`). Do NOT treat V19 as "needs fixing" — it doesn't. Rebuilding
-     V19 with the fix is unnecessary (and currently impossible: no `PublicAPI\V19\net48`).
+   binary). ⚠️ For V21/V19, "unchanged" means "no fix" = Project Server connect fails (see fact 7);
+   build targeted instead.
+7. **VERIFIED STATE (2026-06-23, user-confirmed): the fix is REQUIRED for BOTH V19 and V21.**
+   - **V21 — fix REQUIRED and present.** V21 has `PublicAPI\V21\net48` (the nested layout); the V21
+     DLL was rebuilt with the fix (git: V21 DLL changed since the v3.0.0 import). V21 project-server
+     connect needs the fix and **works with it** (user-verified 2026-06-23 against installed 3.0.57).
+   - **V19 — fix REQUIRED (corrected 2026-06-23).** The earlier note (2026-06-19) claiming "V19 works
+     without the fix" was a misread: V19 connect **without** the fix enumerates only local projects
+     and returns **"No projects found"** against a Project Server — exactly the symptom the fix
+     resolves. User-verified 2026-06-23: after building + installing a fixed V19 DLL, V19
+     project-server connect works. V19's reference assemblies resolve via the **flat**
+     `PublicAPI\V19\Siemens.Engineering.dll` (no `net48` subfolder on V19) — the `.csproj` handles
+     this, but `scripts/build-dotnet.js`'s precheck wrongly skips V19 (it looks for
+     `PublicAPI\V19\net48`). Build V19 **targeted** (`dotnet build ... /p:OpennessTiaMajor=19`), never
+     via `npm run build:dotnet` (which cleans `bin/Release/net48/` and skips V19).
+     See [fix-deploy.md](./references/fix-deploy.md).
    - **V18 / V20 — NOT INSTALLED, unverifiable.** V18's `Portal V18` folder is absent; V20's folder
      is a stub (only `Lib/`, no `tiaap.exe`, no `PublicAPI`). Their `bin/.../V18|V20` DLLs are stale
      author binaries but cannot be tested. Do not claim they are "fixed" or "broken" — mark them
      `NOT-INSTALLED / unverifiable` in the changelog and MemPalace.
-   - Implication for the gate: "every version DLL carries the fix" is **NOT** the goal. The goal is
-     "every version the user runs against a project server works". Verify with
-     `verify-all-versions-fixed.ps1 -VerifiedWorking V19,V21` (it reports FIXED / BASELINE-MATCH /
-     NOT-INSTALLED and only flags a TIA-Portal-installed version that is baseline-match AND not
-     user-verified-working). See [protected-files.md](./protected-files.md) § "All-versions fix
-     verification".
+   - Implication for the gate: the goal is "every version the user runs against a Project Server
+     works" — for this user that is **V19 + V21** (both need the fix).
+     `verify-all-versions-fixed.ps1` reports FIXED / BASELINE-MATCH / NOT-INSTALLED by hashing against
+     the author baseline; note its "BASELINE-MATCH not necessarily broken" assumption is now known to
+     be **false for V19** (V19 baseline-match = "No projects found" = needs the fix).
+     See [protected-files.md](./protected-files.md) § "All-versions fix verification".
 8. **Installing into a running VS Code cannot use `--install-extension` alone.** The active
-   extension locks its native `.node` files and the extension folder cannot be renamed, so
-   `code --install-extension x.vsix --force` fails with `EPERM ... Please restart VS Code`. The
-   working alternative is the **overlay install**: extract the VSIX directly over the installed
-   extension folder, using the Windows **rename-trick** for locked files (rename the locked file
-   aside — rename only touches the directory entry, not the data the process holds — then write the
-   new file under the original name). The in-memory copy only swaps after
-   `Developer: Reload Window`. See [merge-strategy.md](./references/merge-strategy.md) § "Install".
+   extension locks its wrapper DLL and `.node` files, so overwriting in place fails with "being
+   used by another process." The working alternative is the **locked-DLL rename-trick**: rename the
+   locked file aside (rename touches only the directory entry, not the data the process holds),
+   then write the new file under the original name. The in-memory copy only swaps after
+   `Developer: Reload Window`. See [fix-deploy.md](./references/fix-deploy.md).
 
-## MemPalace integration (retrieve before, capture after)
+## MemPalace (retrieve before, capture after) — optional, keep light
 
-This skill is MemPalace-backed. The retrieve/capture contract is detailed in
-[mempalace-integration.md](./references/mempalace-integration.md); the short form:
+- **Before:** `mcp_mempalace_mempalace_kg_query(entity="TiaImportExport.VSExt project server fix")`
+  loads the fix's file locations and current per-version working state. If the palace has nothing
+  yet, skip it — facts 3 + 7 above already encode what matters.
+- **After:** write one diary entry (scope / outcome / evidence / unresolved) and, **only if the
+  working set changed**, invalidate the old `working_versions` KG fact and add the new one.
+  Full contract: [references/mempalace-integration.md](./references/mempalace-integration.md).
 
-- **Before syncing (RETRIEVE):** query the MemPalace knowledge graph for `TiaImportExport.VSExt` and
-  `TIA Portal Project Server fix` to load the fix's location, the current all-versions fix state, and
-  any prior-sync gotchas (e.g. the `--no-dependencies` VSIX pitfall, the locked-DLL rename-trick).
-  Do not rediscover what is already filed.
-- **After syncing (CAPTURE):** write a diary entry (scope / durable outcome / evidence / unresolved
-  edge), update knowledge-graph facts if the all-versions fix state changed, and file any new durable
-  procedure as a drawer (verbatim, recoverable). Skip anything ephemeral or duplicated.
+## Quick Fix Deploy procedure (default — installs the fix, no VSIX)
 
-## Per-layer strategy (detail in [merge-strategy.md](./references/merge-strategy.md))
+Full detail + gotchas + rollback: [references/fix-deploy.md](./references/fix-deploy.md).
 
-| Layer | Source | Action |
-|-------|--------|--------|
-| `out/` (compiled JS) | installed VSIX | **Wholesale replace** — no local edits exist. Copy all installed `out/` files over the workspace; report (do not auto-delete) files that exist only in the workspace. |
-| `package.json` | installed VSIX | **Structural key-merge** — take installed `version`, `activationEvents`, `contributes.commands/menus/languageModelTools/chatParticipants/configuration`. Preserve workspace-only keys (none expected beyond repo metadata). Reconcile `scripts`/`devDependencies`/`dependencies` carefully (workspace may pin local build scripts). |
-| `changelog.md` | installed VSIX | **Prepend** installed's newer entries (e.g. 3.0.1–3.0.12) above the workspace's `## [3.0.0]` block; keep the workspace's project-server-fix note if present. Match the installed file's casing (`changelog.md` vs `CHANGELOG.md`). |
-| `Documentation/`, `scripts/`, `resources/`, `Tools/`, `README.md`, `THIRD_PARTY_NOTICES.md`, `.vsixmanifest` | installed VSIX | Copy **new/changed** files; skip files with local git-tracked modifications (review those manually). |
-| `dotnet/` C# source (the fix) | **workspace only** | **Never overwrite from VSIX.** Only **add** new `tiaMethodRouter.Register(...)` handlers / method-router entries the synced JS requires. Preserve all `Siemens.Engineering.Multiuser` / Project Server code. |
-| `dotnet/**/bin/**`, `dotnet/**/obj/**` | **rebuilt, never copied** | Run `npm run build:dotnet` to recompile the fixed wrapper. Only versions with Openness PublicAPI refs are built; the rest keep their existing DLL. Note: a version keeping the author DLL is **not necessarily broken** — V19 works with the author DLL (fact 7). Verify working state, don't assume "no fix = broken". |
-| `node_modules/` (runtime native deps) | installed VSIX | **Copy wholesale from the installed extension** (`edge-js`, `electron-edge-js`, `xml2js` + transitive). Do NOT `npm install` — it can pull incompatible native binaries. Validate with `npm ls --production`. |
-| VSIX build | workspace | `npx @vscode/vsce package` (WITHOUT `--no-dependencies`, which wrongly drops `node_modules/`). Neutralize `vscode:prepublish` first (it runs `build:dotnet && compile` — would overwrite the fixed DLL / fail on missing `tsconfig.json`). Restore it after. |
-| Installed extension folder | VSIX contents | **Overlay install** (extract VSIX over `~/.vscode/extensions/mariuszcz...tia-import-<v>/`), rename-trick for locked files, skip `node_modules/` if identical. Then `Developer: Reload Window`. |
+1. **Confirm the fix is intact in the fork source** (stop if not):
+   ```powershell
+   $repo = "<path>\TiaImportExport.VSExt"
+   git -C $repo diff --name-only 50d1984 HEAD -- "dotnet/**/*.cs"   # expect 4 files
+   Select-String -Path "$repo\dotnet\TiaOpennessWrapper\TiaOpennessWrapper.Services\TiaConnectionManager.cs" -Pattern 'Siemens.Engineering.Multiuser'  # expect 1 hit
+   ```
+2. **Decide per version** whether a fixed DLL is ready: **V21** = use the committed
+   `dotnet/.../bin/Release/net48/V21/TiaOpennessWrapper.dll` (already carries the fix).
+   **V19** = the committed DLL is the unfixed author baseline → build targeted in step 2b.
+3. **(V19 only) Build a fixed V19 DLL targeted** (bypasses `build-dotnet.js`, which cleans the
+   bin/ AND wrongly skips V19's flat `PublicAPI\V19\` layout):
+   ```powershell
+   dotnet build "$repo\dotnet\TiaOpennessWrapper\TiaOpennessWrapper.csproj" -c Release /p:OpennessTiaMajor=19 -v minimal
+   ```
+   Expect 0 errors (nullable CS86xx warnings are normal). Output → `bin/Release/net48/V19/`.
+4. **For each target version (V19, V21): co-locate deps + swap the fixed wrapper.** Loop below
+   co-locates the 15 fork .NET deps (incl. the Openness **Resolver**) and swaps the fixed DLL in
+   via the locked-DLL rename-trick:
+   ```powershell
+   $srcBin = "$repo\dotnet\TiaOpennessWrapper\bin\Release\net48"
+   $inst = (Get-ChildItem "$env:USERPROFILE\.vscode\extensions" -Directory -Filter 'mariuszcz*tia-import-*' |
+       Sort-Object { [version]($_.BaseName -replace '.*tia-import-','') } -Descending | Select-Object -First 1).FullName
+   foreach ($v in 19, 21) {
+       $dst = "$inst\dotnet\TiaOpennessWrapper\bin\Release\net48\V$v"; $fixed = "$srcBin\V$v\TiaOpennessWrapper.dll"; $active = "$dst\TiaOpennessWrapper.dll"
+       Get-ChildItem "$srcBin\V$v" -File | Where-Object { $_.Name -ne 'TiaOpennessWrapper.dll' -and $_.Name -ne 'TiaOpennessWrapper.pdb' } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination (Join-Path $dst $_.Name) -Force }
+       Rename-Item -LiteralPath $active -NewName "TiaOpennessWrapper.dll.locked-orig-$(Get-Date -Format yyyy-MM-dd)" -Force -ErrorAction SilentlyContinue
+       if (Test-Path $active) { Remove-Item -LiteralPath $active -Force }
+       Copy-Item -LiteralPath $fixed -Destination $active -Force
+       $hA=(Get-FileHash $active -Algorithm SHA256).Hash; $hF=(Get-FileHash $fixed -Algorithm SHA256).Hash
+       Write-Host "V$v match=$($hA -eq $hF) resolver=$(Test-Path "$dst\Siemens.Collaboration.Net.TiaPortal.Openness.Resolver.dll")"
+   }
+   ```
+   Both versions must print `match=True resolver=True`.
+5. **Hand off: `Developer: Reload Window`** (mandatory), then with `tiaImport.tiaPortalVersion: 19`
+   and `: 21` test `TIA Import: Connect to TIA Portal` against a Project Server — projects must
+   populate (V21 first to confirm the pattern, then V19).
+6. **Capture** to MemPalace (one diary entry; invalidate+re-add `working_versions` if the set
+   changed). Commit the rebuilt V19 DLL: `git add dotnet/TiaOpennessWrapper/bin/Release/net48/V19/ && git commit -m "fix: build Project Server fix into V19 wrapper (targeted)"`.
 
-## Procedure
+**Rollback per version:** see [fix-deploy.md](./references/fix-deploy.md) § Rollback.
 
-### 0. RETRIEVE — load prior context from MemPalace (do this first)
+## Advanced — full feature sync (VSIX build)
 
-Before touching files, query MemPalace so you do not rediscover known facts:
+Use this path **only** when the user wants an author-side feature (e.g. Software Units) to actually
+work through the wrapper — not merely load. The Quick Fix Deploy above intentionally leaves such
+features unimplemented (they return `{success:false, error:"Unknown method: <M>"}`, a clean error
+not a crash). The full path pulls the author's `out/` JS, merges `package.json`/`changelog`, adds the
+missing `.NET` handlers to the fork source, runs `npm run test:method-parity` until green, and ships
+a VSIX that overlays the author extension — substantially more depth than the deploy path.
 
-```text
-mcp_mempalace_mempalace_kg_query(entity="TiaImportExport.VSExt")
-mcp_mempalace_mempalace_kg_query(entity="TIA Portal Project Server fix")
-mcp_mempalace_mempalace_list_drawers(wing="tia-portal", room="fork-sync")   # prior sync lessons
-```
+**Do NOT follow this path by reflex.** If asked for the fix to work on a newer extension, the
+Quick Fix Deploy procedure above is the answer.
 
-Load: the fix's exact file locations, the current all-versions fix state (which of V18/V19/V20/V21
-are fixed), and any prior-sync gotchas (the `--no-dependencies` VSIX pitfall, the locked-DLL
-rename-trick, the Openness-PublicAPI-missing skip). If the palace has nothing yet, proceed and
-CAPTURE at the end (step 12).
+Detailed per-layer steps are in [references/merge-strategy.md](./references/merge-strategy.md). The
+short version, in order:
 
-### 1. Confirm installed extension + dry-run diff
+1. `pwsh ./scripts/sync-from-installed.ps1` (dry-run), then `-Apply` to pull `out/`.
+2. Structurally merge `package.json` (take installed `version`/`activationEvents`/`contributes.*`).
+3. Prepend upstream `changelog.md` entries above the fork's `## [3.0.0]`.
+4. Sync new/changed `Documentation/`/`resources/`/`README.md`; preserve fork-local `scripts/` edits.
+5. Run `npm run test:method-parity`; for each missing method, **add** a `tiaMethodRouter.Register(...)`
+   entry + handler in the matching `*MethodsHandler.cs` (never rewrite the Project Server code).
+6. Rebuild wrapper(s): for V21 `npm run build:dotnet`; for V19 build **targeted** (see fix-deploy.md).
+7. `pwsh ./scripts/build-and-install.ps1 -BuildOnly` (neutralizes `vscode:prepublish`; VSCE packaged
+   **without** `--no-dependencies`; `node_modules/` staged from the installed ext, never `npm install`).
+8. `pwsh ./scripts/build-and-install.ps1 -Install` overlays the VSIX onto the running VS Code via the
+   rename-trick; `Developer: Reload Window`; smoke-test Connect against a Project Server.
+9. `pwsh ./scripts/verify-all-versions-fixed.ps1 -VerifiedWorking V19,V21`; record NOT-INSTALLED
+   versions (V18/V20) as `### Known Limitations`; commit.
 
-Run the bundled helper (dry-run by default):
-
-```powershell
-pwsh ./scripts/sync-from-installed.ps1
-```
-
-It auto-detects the highest-version `mariuszcz...tia-import-*` folder under
-`~/.vscode/extensions`, classifies every `out/` file as `NEW` / `CHANGED` / `IDENTICAL` /
-`WORKSPACE-ONLY`, and reports `package.json` + `changelog` deltas. **Read the report before
-applying anything.**
-
-### 2. Sync the JS layer (`out/`)
-
-Apply the wholesale `out/` replacement:
-
-```powershell
-pwsh ./scripts/sync-from-installed.ps1 -Apply
-```
-
-This copies every `out/**` file from the installed VSIX into the workspace `out/`. It **never**
-touches `dotnet/`. Workspace-only `out/` files are listed but left in place — review them: if the
-author removed them upstream, delete them; if they look like local additions, keep them.
-
-### 3. Merge `package.json`
-
-Open workspace `package.json` and the installed one side by side. Apply the installed values for:
-`version`, `engines.vscode`, `activationEvents`, `contributes.commands` (titles/icons/`when`),
-`contributes.menus`, `contributes.viewsContainers`/`views`/`viewsWelcome`,
-`contributes.chatParticipants`, `contributes.languageModelTools` (names, modelDescriptions,
-inputSchemas), and `contributes.configuration.properties` (defaults — note the 3.0.11 change making
-`tiaImport.cli.enabled` default `false` and hot-reloadable; the new `TIA Import: Toggle CLI Bridge`
-command). Validate JSON after editing.
-
-Keep workspace-specific bits: `repository`, `__metadata` (usually safe to drop), and any local
-`scripts` entries the fork added. **Do not** let the merge pull in `vscode:prepublish` changes that
-would run `build:dotnet && compile` at package time in a compiled-only workspace — see step 9.
-
-### 4. Merge `changelog.md`
-
-Prepend the installed extension's entries newer than the workspace's top entry (the workspace tops
-out at `## [3.0.0]`). Keep the workspace's existing entries below. If the workspace carries a
-project-server-fix changelog note, preserve it (optionally under a `### Fixed` sub-entry).
-
-### 5. Sync resources, docs, scripts
-
-For `Documentation/`, `scripts/`, `resources/`, `Tools/`, `README.md`, `THIRD_PARTY_NOTICES.md`,
-`.vsixmanifest`: copy files that are new or changed in the installed VSIX, unless the workspace copy
-has local git-tracked edits — in that case review and manually reconcile. `.vsixmanifest` usually
-only needs the version + size updated.
-
-### 6. Rebuild the .NET wrapper from the fixed source
-
-```powershell
-npm run build:dotnet
-```
-
-This recompiles `TiaOpennessWrapper.dll` **from the workspace C# source** (which still contains the
-Project Server / multiuser fix) for every version whose Openness PublicAPI refs are available.
-**Do not** copy `dotnet/**/bin/**` from the VSIX. Versions whose `PublicAPI\V<n>\net48` is missing
-are **skipped** — their DLL keeps the existing binary. ⚠️ A skipped version is **not necessarily
-broken**: V19 works with the author DLL (fact 7). Step 7 determines which versions actually need
-attention.
-
-### 7. VERIFY which versions work (the goal is "working", not "every DLL has the fix")
-
-The fix is **V21-specific** (fact 7): V21 requires it; V19 works without it; V18/V20 are not
-installed. So the gate is NOT "every version DLL carries the fix" — it is "every version the user
-runs against a project server works". Run the bundled verifier, passing the versions you have
-confirmed working via smoke-test:
-
-```powershell
-# -VerifiedWorking lists versions confirmed working by user smoke-test (default: V19,V21).
-pwsh ./scripts/verify-all-versions-fixed.ps1 -VerifiedWorking V19,V21
-```
-
-It reports each version as one of:
-- **FIXED** — DLL differs from the author baseline (rebuilt with the fix; e.g. V21).
-- **BASELINE-MATCH** — DLL == author baseline (no fix). May still work (V19 does) or may need the
-  fix. Flagged only if TIA Portal for that version is installed AND it is NOT in `-VerifiedWorking`.
-- **NOT-INSTALLED** — TIA Portal V<n> not installed (folder absent, or a stub with no executable);
-  cannot be verified. Never causes a failure.
-
-**If a TIA-Portal-installed version is BASELINE-MATCH and NOT user-verified-working** (genuinely
-suspect), the script exits non-zero. To resolve:
-- Smoke-test it: set `tiaImport.tiaPortalVersion: <n>`, connect to a Project Server, list/select a
-  project. If it works, add it to `-VerifiedWorking` and record it in MemPalace (step 12).
-- If it does NOT work and needs the fix: install the TIA Portal **Openness (PublicAPI)** option for
-  that version (Siemens installer → Modify → "TIA Portal Openness") so `PublicAPI\V<n>\net48`
-  appears, then re-run `npm run build:dotnet`; or copy `Siemens.Engineering*.dll` reference
-  assemblies into `dotnet/refs/V<n>/` and rebuild.
-- **NOT-INSTALLED** versions (V18/V20 here) are a known limitation — record them in the changelog's
-  `### Known Limitations` and MemPalace as "unverifiable (TIA Portal not installed)". Do NOT claim
-  they are fixed or broken.
-
-### 8. Validate — the gates that prove the merge is correct
-
-Run in order; stop and fix on any failure:
-
-```powershell
-npm run test:method-parity   # JS callDotNet/safeCall methods ↔ TiaConnector.cs tiaMethodRouter.Register
-npm run test:unit            # mocha unit tests (if applicable to this compiled-only workspace)
-npm run build:dotnet         # confirms C# compiles with the fix intact
-```
-
-- **`test:method-parity` failures** = the synced JS calls .NET methods not registered in
-  `TiaConnector.cs`. Fix by **adding** `tiaMethodRouter.Register("MissingMethod", handler.Method)`
-  entries + the handler method in the appropriate `*MethodsHandler.cs` (e.g.
-  `ConnectionMethodsHandler.cs`). Mirror the author's method names exactly. **Never delete or
-  rewrite** the existing Project Server / multiuser connection code to do this — append alongside it.
-- Re-run the parity test until green.
-
-### 9. Build the VSIX
-
-This workspace is **compiled-only** (no `src/`, no `tsconfig.json`), so the standard
-`npm run package` (which triggers `vscode:prepublish` → `build:dotnet && compile`) must be adapted.
-Use the orchestrator, which neutralizes `vscode:prepublish` for the build then restores it:
-
-```powershell
-pwsh ./scripts/build-and-install.ps1 -BuildOnly
-```
-
-What it does (and why):
-
-1. **Stage `node_modules/`** by copying it from the installed extension (validated native binaries:
-   `edge-js`, `electron-edge-js`, `xml2js`). Do NOT `npm install` — it can pull incompatible
-   natives. Verify with `npm ls --production`.
-2. **Temporarily neutralize `vscode:prepublish`** (set to an echo) so the build does not run
-   `build:dotnet` (would overwrite the fixed DLL) or `compile` (would fail: no `tsconfig.json`) or
-   the version bump.
-3. **`npx @vscode/vsce package`** — WITHOUT `--no-dependencies`. ⚠️ `--no-dependencies` silently
-   drops the entire `node_modules/` subtree, producing a VSIX with no runtime native deps that fails
-   to load with "Cannot find module". Without the flag, vsce runs `npm ls --production` (read-only)
-   against the staged `node_modules` and includes production deps — it does **not** run
-   `npm install`, so the validated binaries stay intact.
-4. **Restore `vscode:prepublish`** to its original value.
-5. Verify the fixed V21 (and any other fixed-version) DLL is inside the VSIX by hashing the zip
-   entry against the workspace DLL.
-
-### 10. Install — overlay into the running VS Code
-
-`code --install-extension x.vsix --force` fails on a running VS Code (`EPERM ... Please restart VS
-Code`) because the active extension locks its native files and the extension folder cannot be
-renamed. Use the overlay installer instead:
-
-```powershell
-pwsh ./scripts/build-and-install.ps1 -Install   # builds (step 9) then overlays
-# or, if the VSIX is already built:
-pwsh ./scripts/install-overlay.ps1 -Vsix .\tia-import-<ver>.vsix
-```
-
-The overlay installer extracts the VSIX directly over
-`~/.vscode/extensions/mariuszcz...tia-import-<v>/`, **skips `node_modules/`** if identical (avoids
-touching any loaded natives), and for any **locked** file uses the **rename-trick**: rename the
-locked file to `<name>.locked-orig` (rename only touches the directory entry, not the data the
-process holds), then write the new file under the original name. The author's originals are
-preserved as `*.locked-orig` backups.
-
-### 11. Reload + smoke-test
-
-The running extension host still holds the **old** DLL in memory — the on-disk replacement only
-takes effect after a host restart. Run `Developer: Reload Window` (or `Ctrl+Shift+P` →
-`Reload Window`). Then verify:
-
-- The `TIA Portal Import` activity bar view loads.
-- `TIA Import: Connect to TIA Portal` works against a **Project Server** multiuser project (the
-  whole point of the fork) — connect, list projects, select one. Use the **V21** wrapper
-  (`tiaImport.tiaPortalVersion: 21`) since that is the version currently carrying the fix.
-- A new author feature from the synced version works (e.g. the `CLI Bridge` toggle if 3.0.11+).
-
-### 12. CAPTURE — file durable outcomes to MemPalace
-
-After the sync+build+install, capture what future runs should not rediscover. Follow the
-mempalace-capture storage rules (drawer = verbatim procedure, KG = stable fact, diary = session
-compression). Concretely:
-
-```text
-# Diary (always): scope / durable outcome / evidence / unresolved edge
-mcp_mempalace_mempalace_diary_write(agent_name="tia-fork-sync",
-  entry="scope:sync-fork-3.0.12|outcome:js-merged+vsix-built+overlay-installed|evidence:method-parity-46/46+v21-fixed+v19-works-without-fix|unresolved:v18/v20-not-installed-unverifiable")
-
-# Knowledge graph (only if the all-versions working state changed). Invalidate the old fact first:
-mcp_mempalace_mempalace_kg_invalidate(subject="TiaImportExport.VSExt project server fix",
-  predicate="fixed_in_versions", object="<previous object string>", ended="<date>")
-mcp_mempalace_mempalace_kg_add(subject="TiaImportExport.VSExt project server fix",
-  predicate="working_versions", object="V21 (fix required+present); V19 (works without fix, user-verified); V18/V20 not installed",
-  valid_from="2026-06-19")
-
-# Drawer (only for a NEW durable procedure, after a duplicate check)
-mcp_mempalace_mempalace_check_duplicate(content=<the new procedure>)
-mcp_mempalace_mempalace_add_drawer(wing="tia-portal", room="fork-sync",
-  content=<verbatim procedure>, source_file=<path>)
-```
-
-Skip capture if the memory is ephemeral, duplicated, or speculative. Reuse the `tia-portal` wing and
-`fork-sync` / `project-server-fix` rooms rather than creating near-duplicates.
-
-### 13. Version bump + commit
-
-Set `package.json` `version` to the installed VSIX's version (the helper prints it). Update
-`CHANGELOG.md` (record the per-version working state under `### Known Limitations` for any
-NOT-INSTALLED versions, e.g. "V18/V20: TIA Portal not installed — Project Server connect
-unverifiable; use V19 or V21"). Then:
-
-```powershell
-git add -A
-git commit -m "Merge upstream VSIX vX.Y.Z into project-server-fixed fork"
-```
-
-Use a clear message that names the upstream version, explicitly states the Project Server fix was
-preserved, and lists the working state (e.g. "fix required+present for V21; V19 works without fix
-(user-verified); V18/V20 not installed — unverifiable").
+**Hard rules for the advanced path:** never copy `dotnet/**/bin|obj/**` from the VSIX; never
+overwrite the four protected `.cs` files; never package with `--no-dependencies`; never `npm install`
+for native deps; always restore `vscode:prepublish` after the VSIX build.
 
 ## Hard constraints
 
 - **NEVER** copy `dotnet/**/bin/**` or `dotnet/**/obj/**` from the installed VSIX. Rebuild.
 - **NEVER** overwrite `TiaConnector.cs`, `TiaPortalService.cs`, `ConnectionMethodsHandler.cs`, or
-  `TiaConnectionManager.cs` from the VSIX (the VSIX has no source anyway). Only **add** to them.
-- **NEVER** package the VSIX with `--no-dependencies` — it silently drops `node_modules/` and the
-  extension fails to load with "Cannot find module".
-- **NEVER** run `npm install` to stage `node_modules/` — copy it from the installed extension so the
-  validated native binaries (`edge-js`/`electron-edge-js`) are preserved.
-- **ALWAYS** verify the per-version working state (step 7) after `build:dotnet`. The goal is
-  "every version the user runs works", NOT "every DLL carries the fix" — V19 works without the fix
-  (fact 7). Use `verify-all-versions-fixed.ps1 -VerifiedWorking <confirmed versions>`. Record
-  NOT-INSTALLED versions (V18/V20) as `### Known Limitations` (unverifiable), not as "broken".
-- **ALWAYS** restore `vscode:prepublish` to its original value after the VSIX build.
+  `TiaConnectionManager.cs` (the four protected fix files). Only **add** to them.
+- **NEVER** run `npm run build:dotnet` to produce a single version's fixed DLL — it cleans
+  `bin/Release/net48/` first (clobbering the V21 fixed DLL + V18/V20 baselines) AND wrongly skips
+  V19's flat `PublicAPI\V19\` layout. Build **targeted** (`dotnet build /p:OpennessTiaMajor=<n>`).
+- **ALWAYS** co-locate the wrapper's 15 .NET deps (incl. the Openness **Resolver**) alongside the
+  fixed DLL in the installed author's `V<n>/` folder. The author's deduped `common/` layout does
+  NOT satisfy the fork wrapper's co-located resolution → `Siemens.Collaboration.Net` FileNotFound.
+- **ALWAYS** use the locked-DLL rename-trick when swapping a wrapper into a running VS Code; then
+  `Developer: Reload Window`.
+- **ALWAYS** verify per-version working state with `verify-all-versions-fixed.ps1 -VerifiedWorking V19,V21`.
+  Note V19's BASELINE-MATCH is **known-broken** for Project Server ("No projects found"), not "may
+  still work" as the script's older wording implied.
+- (Advanced path only) **NEVER** package the VSIX with `--no-dependencies`; **NEVER** `npm install`
+  native deps (copy `node_modules/` from the installed ext); **ALWAYS** restore `vscode:prepublish`.
 - Do **not** hand-edit `.s7dcl`/`.s7res` as SCL, or modify `.tia-cache/` / `TiaExport/` — those are
   regenerated (per repo `AGENTS.md`).
-- Keep changes scoped to the sync; avoid drive-by reformatting of TIA-generated files.
+- Keep changes scoped to the deploy; avoid drive-by reformatting of TIA-generated files.
