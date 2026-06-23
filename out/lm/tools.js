@@ -199,6 +199,64 @@ class ExportDeviceTool {
         });
     }
 }
+class ListUnitsTool {
+    api;
+    constructor(api) {
+        this.api = api;
+    }
+    async invoke(options) {
+        const res = await this.api.listUnits(options.input.device);
+        if (!res.success) {
+            return errorResult(res.error);
+        }
+        return jsonResult({
+            success: true,
+            supported: res.data?.supported ?? false,
+            units: res.data?.units ?? []
+        });
+    }
+}
+class ExportUnitsTool {
+    api;
+    constructor(api) {
+        this.api = api;
+    }
+    async invoke(options) {
+        const res = await this.api.exportUnits(options.input.device);
+        if (!res.success) {
+            return errorResult(res.error);
+        }
+        return jsonResult({
+            success: true,
+            message: res.message,
+            supported: res.data?.supported ?? true,
+            unitCount: res.data?.unitCount ?? 0,
+            itemCount: res.data?.itemCount,
+            updatedCount: res.data?.updatedCount,
+            unchangedCount: res.data?.unchangedCount
+        });
+    }
+}
+class ExportUnitTool {
+    api;
+    constructor(api) {
+        this.api = api;
+    }
+    async invoke(options) {
+        const res = await this.api.exportUnit(options.input.device, options.input.unitName, options.input.kind);
+        if (!res.success) {
+            return errorResult(res.error);
+        }
+        return jsonResult({
+            success: true,
+            message: res.message,
+            path: res.data?.path,
+            itemCount: res.data?.itemCount,
+            updatedCount: res.data?.updatedCount,
+            unchangedCount: res.data?.unchangedCount
+        });
+    }
+}
 class ExportHwConfigTool {
     api;
     constructor(api) {
@@ -249,7 +307,9 @@ class ImportFileTool {
     async invoke(options) {
         const res = await this.api.importFile(options.input.device, options.input.filePath, {
             overwriteExisting: options.input.overwriteExisting,
-            compareBeforeImport: options.input.compareBeforeImport
+            compareBeforeImport: options.input.compareBeforeImport,
+            unitName: options.input.unitName,
+            unitKind: options.input.unitKind
         });
         if (!res.success) {
             return errorResult(res.error);
@@ -283,12 +343,58 @@ class ImportFolderTool {
     async invoke(options) {
         const res = await this.api.importFolder(options.input.device, options.input.folderPath, {
             overwriteExisting: options.input.overwriteExisting,
-            recursive: options.input.recursive
+            recursive: options.input.recursive,
+            unitName: options.input.unitName,
+            unitKind: options.input.unitKind
         });
         if (!res.success) {
             return errorResult(res.error);
         }
         return jsonResult({ success: true, message: res.message, result: res.data });
+    }
+}
+class ImportUnitTool {
+    api;
+    constructor(api) {
+        this.api = api;
+    }
+    async prepareInvocation(options) {
+        const overwrite = options.input.overwriteExisting !== false;
+        if (overwrite && !getAutoConfirmImports()) {
+            return {
+                invocationMessage: `Export Software Unit from "${options.input.unitFolderPath ?? 'workspace'}" into device "${options.input.device}" (overwrites)`,
+                confirmationMessages: {
+                    title: 'Confirm Software Unit export to TIA Portal',
+                    message: new vscode.MarkdownString(`This will **overwrite** the matching Software Unit in TIA Portal device \`${options.input.device}\` with the contents of:\n\n` +
+                        `\`${options.input.unitFolderPath ?? 'detected unit folder'}\`\n\n` +
+                        `To skip this confirmation in the future, enable \`tiaImport.lmTools.autoConfirmImports\`.`)
+                }
+            };
+        }
+        return {
+            invocationMessage: `Export Software Unit from "${options.input.unitFolderPath ?? 'workspace'}" into device "${options.input.device}"`
+        };
+    }
+    async invoke(options) {
+        const res = await this.api.importUnit(options.input.device, options.input.unitFolderPath, {
+            overwriteExisting: options.input.overwriteExisting,
+            compareBeforeImport: options.input.compareBeforeImport,
+            createMissingUnit: options.input.createMissingUnit,
+            deleteOrphans: options.input.deleteOrphans
+        });
+        if (!res.success) {
+            return errorResult(res.error);
+        }
+        return jsonResult({
+            success: true,
+            message: res.message,
+            unitName: res.data?.unitName,
+            itemCount: res.data?.itemCount,
+            successCount: res.data?.successCount,
+            errorCount: res.data?.errorCount,
+            skippedCount: res.data?.skippedCount,
+            result: res.data
+        });
     }
 }
 class ImportHwConfigTool {
@@ -536,9 +642,13 @@ function registerLanguageModelTools(context, api) {
         vscode.lm.registerTool('tia_list_blocks', new ListBlocksTool(api)),
         vscode.lm.registerTool('tia_export_block', new ExportBlockTool(api)),
         vscode.lm.registerTool('tia_export_device', new ExportDeviceTool(api)),
+        vscode.lm.registerTool('tia_list_units', new ListUnitsTool(api)),
+        vscode.lm.registerTool('tia_export_units', new ExportUnitsTool(api)),
+        vscode.lm.registerTool('tia_export_unit', new ExportUnitTool(api)),
         vscode.lm.registerTool('tia_export_hw_config', new ExportHwConfigTool(api)),
         vscode.lm.registerTool('tia_import_file', new ImportFileTool(api)),
         vscode.lm.registerTool('tia_import_folder', new ImportFolderTool(api)),
+        vscode.lm.registerTool('tia_import_unit', new ImportUnitTool(api)),
         vscode.lm.registerTool('tia_import_hw_config', new ImportHwConfigTool(api)),
         vscode.lm.registerTool('tia_export_project', new ExportProjectTool(api)),
         vscode.lm.registerTool('tia_refresh', new RefreshTool(api)),

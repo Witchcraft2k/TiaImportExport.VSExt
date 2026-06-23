@@ -75,7 +75,7 @@ function isTypeDependencyError(error) {
  * Process a list of files for import, tracking progress and results.
  * Failed UDT files due to dependency errors are retried after the first pass.
  */
-async function processFilesForImport(files, bridge, deviceId, overwrite, basePath, compareBeforeImport, progress, token) {
+async function processFilesForImport(files, bridge, deviceId, overwrite, basePath, compareBeforeImport, progress, token, unitName, unitKind) {
     let successCount = 0;
     let errorCount = 0;
     let skippedCount = 0;
@@ -108,7 +108,9 @@ async function processFilesForImport(files, bridge, deviceId, overwrite, basePat
         try {
             const result = ext === '.xlsx'
                 ? await bridge.importXlsxFileToTia(deviceId, file, overwrite, compareBeforeImport)
-                : await bridge.importXmlFileToTia(deviceId, file, overwrite, basePath, compareBeforeImport);
+                : unitName
+                    ? await bridge.importXmlFileToUnit(deviceId, unitName, unitKind, file, overwrite, basePath, compareBeforeImport, true)
+                    : await bridge.importXmlFileToTia(deviceId, file, overwrite, basePath, compareBeforeImport);
             if (result.success && result.skipped) {
                 skippedCount++;
                 logger_1.Logger.info(`${progressLabel} ≡ ${fileName} (identical)`);
@@ -176,7 +178,9 @@ async function processFilesForImport(files, bridge, deviceId, overwrite, basePat
                 try {
                     const result = ext === '.xlsx'
                         ? await bridge.importXlsxFileToTia(deviceId, file, overwrite, compareBeforeImport)
-                        : await bridge.importXmlFileToTia(deviceId, file, overwrite, basePath, compareBeforeImport);
+                        : unitName
+                            ? await bridge.importXmlFileToUnit(deviceId, unitName, unitKind, file, overwrite, basePath, compareBeforeImport, true)
+                            : await bridge.importXmlFileToTia(deviceId, file, overwrite, basePath, compareBeforeImport);
                     if (result.success && result.skipped) {
                         skippedCount++;
                         logger_1.Logger.info(`[retry:${retryPass}] ≡ ${fileName} (identical)`);
@@ -286,12 +290,12 @@ async function deleteOrphanedForGenericFolder(bridge, deviceId, folderPath, forc
 /**
  * Delete orphaned blocks and groups for block folder export.
  */
-async function deleteOrphanedBlocks(bridge, deviceId, folderPath, basePath, cancelled) {
+async function deleteOrphanedBlocks(bridge, deviceId, folderPath, basePath, cancelled, unitName, unitKind) {
     if (cancelled) {
         return;
     }
     try {
-        const deleteResult = await bridge.deleteOrphanedBlockGroups(deviceId, folderPath, basePath);
+        const deleteResult = await bridge.deleteOrphanedBlockGroups(deviceId, folderPath, basePath, unitName, unitKind, true);
         (0, exportUtils_1.logDeleteResults)(deleteResult, 'blocks');
     }
     catch (err) {
@@ -301,14 +305,14 @@ async function deleteOrphanedBlocks(bridge, deviceId, folderPath, basePath, canc
 /**
  * Create empty folders in TIA Portal for block exports.
  */
-async function createEmptyBlockGroups(bridge, deviceId, folderPath, basePath) {
+async function createEmptyBlockGroups(bridge, deviceId, folderPath, basePath, unitName, unitKind) {
     const emptyFolders = await (0, exportUtils_1.getEmptyFoldersInDirectory)(folderPath);
     if (emptyFolders.length === 0) {
         return 0;
     }
     logger_1.Logger.info(`Creating empty folders: ${emptyFolders.length}`);
     try {
-        const createResult = await bridge.createBlockGroups(deviceId, emptyFolders, basePath);
+        const createResult = await bridge.createBlockGroups(deviceId, emptyFolders, basePath, unitName, unitKind, true);
         if (createResult.success && (createResult.groupsCount ?? 0) > 0) {
             logger_1.Logger.success(`Created ${createResult.groupsCount} empty folders in TIA Portal before importing blocks`);
         }
@@ -372,14 +376,15 @@ async function exportMultipleFoldersCore(connectionService, config, uris) {
                 const operationLabel = `${config.logSection}: ${folderPath}`;
                 logger_1.Logger.startOperation(operationLabel);
                 const bridge = connectionService.getBridge();
-                // Determine base path
+                // Determine Software Unit scope and base path
+                const unitCtx = (0, exportUtils_1.detectUnitContext)(folderPath);
                 const basePath = config.isBlocksExport
                     ? (0, exportUtils_1.findProgramBlocksBasePath)(folderPath)
-                    : vscode.workspace.getWorkspaceFolder(vscode.Uri.file(folderPath))?.uri.fsPath;
+                    : (unitCtx?.unitRoot ?? vscode.workspace.getWorkspaceFolder(vscode.Uri.file(folderPath))?.uri.fsPath);
                 // Create empty folders for block exports
                 let emptyFolderCount = 0;
                 if (config.isBlocksExport) {
-                    emptyFolderCount = await createEmptyBlockGroups(bridge, selectedDevice.deviceId, folderPath, basePath);
+                    emptyFolderCount = await createEmptyBlockGroups(bridge, selectedDevice.deviceId, folderPath, basePath, unitCtx?.unitName, undefined);
                 }
                 // Get list of supported files
                 const supportedFiles = await (0, exportUtils_1.getSupportedFilesInFolder)(folderPath, true);
@@ -409,13 +414,13 @@ async function exportMultipleFoldersCore(connectionService, config, uris) {
                 }
                 progress.report({ message: `${folderLabel} ${folderName}` });
                 // Process files
-                const { successCount, errorCount, skippedCount } = await processFilesForImport(supportedFiles, bridge, selectedDevice.deviceId, true, basePath, overwriteMode.compareBeforeImport, progress, token);
+                const { successCount, errorCount, skippedCount } = await processFilesForImport(supportedFiles, bridge, selectedDevice.deviceId, true, basePath, overwriteMode.compareBeforeImport, progress, token, unitCtx?.unitName, undefined);
                 totalSuccess += successCount;
                 totalErrors += errorCount;
                 totalSkipped += skippedCount;
                 // Delete orphaned elements
                 if (config.isBlocksExport) {
-                    await deleteOrphanedBlocks(bridge, selectedDevice.deviceId, folderPath, basePath, token.isCancellationRequested);
+                    await deleteOrphanedBlocks(bridge, selectedDevice.deviceId, folderPath, basePath, token.isCancellationRequested, unitCtx?.unitName, undefined);
                 }
                 else {
                     await deleteOrphanedForGenericFolder(bridge, selectedDevice.deviceId, folderPath, overwriteMode.forceOverwrite, token.isCancellationRequested);
@@ -468,12 +473,16 @@ async function exportFolderCore(connectionService, config, uri) {
         logger_1.Logger.info(`Folder: ${folderPath}`);
         logger_1.Logger.info(`Device: ${selectedDevice.label}`);
         logger_1.Logger.info(`Mode: ${overwriteMode.forceOverwrite ? 'Overwrite all' : 'Check and overwrite differences'}`);
-        // Determine base path
+        // Determine Software Unit scope and base path
+        const unitCtx = (0, exportUtils_1.detectUnitContext)(folderPath);
         const basePath = config.isBlocksExport
             ? (0, exportUtils_1.findProgramBlocksBasePath)(folderPath)
-            : vscode.workspace.getWorkspaceFolder(vscode.Uri.file(folderPath))?.uri.fsPath;
+            : (unitCtx?.unitRoot ?? vscode.workspace.getWorkspaceFolder(vscode.Uri.file(folderPath))?.uri.fsPath);
         if (basePath) {
             logger_1.Logger.info(`Base path: ${basePath}`);
+        }
+        if (unitCtx) {
+            logger_1.Logger.info(`Software Unit scope: ${unitCtx.unitName}`);
         }
         const exportSuccess = await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
@@ -486,7 +495,7 @@ async function exportFolderCore(connectionService, config, uri) {
             // Create empty folders for block exports
             let emptyFolderCount = 0;
             if (config.isBlocksExport) {
-                emptyFolderCount = await createEmptyBlockGroups(bridge, selectedDevice.deviceId, folderPath, basePath);
+                emptyFolderCount = await createEmptyBlockGroups(bridge, selectedDevice.deviceId, folderPath, basePath, unitCtx?.unitName, unitCtx ? undefined : undefined);
             }
             // Get list of supported files
             const supportedFiles = await (0, exportUtils_1.getSupportedFilesInFolder)(folderPath, true);
@@ -519,10 +528,10 @@ async function exportFolderCore(connectionService, config, uri) {
                 logger_1.Logger.info(`Found ${supportedFiles.length} files to export`);
             }
             // Process files
-            const { successCount, errorCount, skippedCount } = await processFilesForImport(supportedFiles, bridge, selectedDevice.deviceId, true, basePath, overwriteMode.compareBeforeImport, progress, token);
+            const { successCount, errorCount, skippedCount } = await processFilesForImport(supportedFiles, bridge, selectedDevice.deviceId, true, basePath, overwriteMode.compareBeforeImport, progress, token, unitCtx?.unitName, unitCtx ? undefined : undefined);
             // Delete orphaned elements
             if (config.isBlocksExport) {
-                await deleteOrphanedBlocks(bridge, selectedDevice.deviceId, folderPath, basePath, token.isCancellationRequested);
+                await deleteOrphanedBlocks(bridge, selectedDevice.deviceId, folderPath, basePath, token.isCancellationRequested, unitCtx?.unitName, unitCtx ? undefined : undefined);
             }
             else {
                 await deleteOrphanedForGenericFolder(bridge, selectedDevice.deviceId, folderPath, overwriteMode.forceOverwrite, token.isCancellationRequested);

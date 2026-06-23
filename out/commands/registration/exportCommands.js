@@ -18,5 +18,6 @@ function registerExportCommands(ctx) {
     (0, commandContext_1.register)(ctx, 'tia-import.exportProgramToTia', (uri, uris) => (0, export_1.exportProgramToTiaCommand)(connectionService, uri, uris));
     (0, commandContext_1.register)(ctx, 'tia-import.exportXlsxToTia', (uri, uris) => (0, export_1.exportXlsxToTiaCommand)(connectionService, uri, uris));
     (0, commandContext_1.register)(ctx, 'tia-import.exportXlsxFolderToTia', (uri) => (0, export_1.exportXlsxFolderToTiaCommand)(connectionService, uri));
+    (0, commandContext_1.register)(ctx, 'tia-import.exportUnitToTia', (uri) => (0, export_1.exportUnitToTiaCommand)(connectionService, uri));
 }
 //# sourceMappingURL=exportCommands.js.map

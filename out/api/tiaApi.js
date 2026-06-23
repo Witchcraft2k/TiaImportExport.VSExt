@@ -39,12 +39,13 @@ exports.getTiaApi = getTiaApi;
 const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
-const projectImport_1 = require("../services/projectImport");
+const pathBuilder_1 = require("../services/import/pathBuilder");
 const logger_1 = require("../utils/logger");
 const workspace_1 = require("../utils/workspace");
 const config_1 = require("../utils/config");
 const compileDiagnostics_1 = require("../utils/compileDiagnostics");
 const s7dclErrorParser_1 = require("../utils/s7dclErrorParser");
+const s7dclPreviewMirror_1 = require("../utils/s7dclPreviewMirror");
 function ok(data, message) {
     return { success: true, data, message };
 }
@@ -355,15 +356,136 @@ class TiaApi {
         }
     }
     /**
+     * Compute the device-folder path used by export operations
+     * (`<exportPath>/Devices/<Category>/<DeviceName>`).
+     */
+    async resolveDeviceExportPath(device) {
+        const projectName = this.connection.currentProjectName;
+        if (!projectName) {
+            return err('No project selected');
+        }
+        const exportPath = await workspace_1.WorkspaceManager.getProjectExportPath(projectName);
+        if (!exportPath) {
+            return err('No workspace folder open or export path unavailable');
+        }
+        const deviceFolder = (0, pathBuilder_1.buildDeviceFolderPath)(device, exportPath);
+        return ok({ projectName, deviceFolder });
+    }
+    /**
+     * List Software Units (PlcUnit / PlcSafetyUnit) on a device. Returns
+     * `{supported:false}` on TIA Portal runtimes that do not expose Units.
+     */
+    async listUnits(deviceIdOrName) {
+        const guard = await this.ensureConnected();
+        if (!guard.success) {
+            return guard;
+        }
+        const device = this.findDevice(deviceIdOrName);
+        if (!device) {
+            return err(`Device "${deviceIdOrName}" not found`);
+        }
+        try {
+            const res = await this.importService.bridge.listUnits(device.id);
+            if (!res.success) {
+                return err(res.error || 'Failed to list Software Units');
+            }
+            return ok({ supported: res.supported !== false, units: res.units ?? [] });
+        }
+        catch (e) {
+            return err(e instanceof Error ? e.message : String(e));
+        }
+    }
+    /**
+     * Export every Software Unit on a device to
+     * `<workspace>/TiaExport/Projects/<Proj>/Devices/<Category>/<Device>/Units/<UnitName>/`.
+     */
+    async exportUnits(deviceIdOrName) {
+        const guard = await this.ensureConnected();
+        if (!guard.success) {
+            return guard;
+        }
+        const device = this.findDevice(deviceIdOrName);
+        if (!device) {
+            return err(`Device "${deviceIdOrName}" not found`);
+        }
+        const pathRes = await this.resolveDeviceExportPath(device);
+        if (!pathRes.success) {
+            return pathRes;
+        }
+        const cfg = (0, config_1.getConfig)();
+        try {
+            await fs.promises.mkdir(pathRes.data.deviceFolder, { recursive: true });
+            const res = await this.importService.bridge.exportUnits(device.id, pathRes.data.deviceFolder, {
+                includeComments: cfg.includeComments,
+                excludeSystemBlocks: cfg.excludeSystemBlocks,
+                format: cfg.exportFormat,
+                dbExportFormat: cfg.dbExportFormat,
+                s7dclPreviewXmlEnabled: (0, s7dclPreviewMirror_1.isS7dclPreviewMirrorEnabled)(),
+                generateXlsx: cfg.tagTableFormat === 'xlsx'
+            });
+            if (!res.success) {
+                return err(res.error || 'Failed to export Software Units');
+            }
+            if (res.supported === false) {
+                return ok(res, 'Software Units not supported on this TIA Portal runtime');
+            }
+            return ok(res, `Exported ${res.unitCount ?? 0} Software Unit(s) from "${device.displayName || device.name}"`);
+        }
+        catch (e) {
+            return err(e instanceof Error ? e.message : String(e));
+        }
+    }
+    /**
+     * Export a single named Software Unit. `kind` is optional and selects
+     * between standard (`plc`) and fail-safe (`safety`) units when both
+     * compositions could contain the same name.
+     */
+    async exportUnit(deviceIdOrName, unitName, kind) {
+        const guard = await this.ensureConnected();
+        if (!guard.success) {
+            return guard;
+        }
+        const device = this.findDevice(deviceIdOrName);
+        if (!device) {
+            return err(`Device "${deviceIdOrName}" not found`);
+        }
+        if (!unitName || !unitName.trim()) {
+            return err('Unit name is required');
+        }
+        const pathRes = await this.resolveDeviceExportPath(device);
+        if (!pathRes.success) {
+            return pathRes;
+        }
+        const cfg = (0, config_1.getConfig)();
+        try {
+            await fs.promises.mkdir(pathRes.data.deviceFolder, { recursive: true });
+            const res = await this.importService.bridge.exportUnit(device.id, unitName, kind, pathRes.data.deviceFolder, {
+                includeComments: cfg.includeComments,
+                excludeSystemBlocks: cfg.excludeSystemBlocks,
+                format: cfg.exportFormat,
+                dbExportFormat: cfg.dbExportFormat,
+                s7dclPreviewXmlEnabled: (0, s7dclPreviewMirror_1.isS7dclPreviewMirrorEnabled)(),
+                generateXlsx: cfg.tagTableFormat === 'xlsx'
+            });
+            if (!res.success) {
+                return err(res.error || 'Failed to export Software Unit');
+            }
+            return ok(res, `Exported Software Unit "${unitName}" from "${device.displayName || device.name}"`);
+        }
+        catch (e) {
+            return err(e instanceof Error ? e.message : String(e));
+        }
+    }
+    /**
      * Export hardware configuration (TIA → workspace `DeviceConfiguration/`).
      *
      * - When `deviceIdOrName` is provided: export only that device.
      * - When omitted: iterate every device in the project (PLCs, HMIs, IO_Devices…).
      *
      * Format follows the `tiaImport.hwConfigFormat` setting (`xml` per-device folder
-     * or `cax` AutomationML `.aml`). IO_Devices use a flat layout
-     * (`Devices/IO_Devices/<file>`); other categories use
-     * `Devices/<Category>/<DeviceName>/DeviceConfiguration/<file>`.
+     * or `cax` AutomationML `.aml`). Root IO devices keep the legacy flat layout
+     * (`Devices/IO_Devices/<file>`); devices inside TIA folders (including IO
+     * devices in folders) use `Devices/<Category>/<FolderPath>/<DeviceName>/DeviceConfiguration/<file>`.
      */
     async exportHwConfig(deviceIdOrName, opts) {
         const guard = await this.ensureConnected();
@@ -407,10 +529,10 @@ class TiaApi {
         for (const dev of targets) {
             const displayName = dev.displayName || dev.name;
             const deviceType = dev.type || 'Device';
-            const categoryFolder = (0, projectImport_1.getDeviceCategoryFolder)(deviceType);
-            const hwConfigPath = categoryFolder === 'IO_Devices'
-                ? path.join(exportPath, 'Devices', categoryFolder)
-                : path.join(exportPath, 'Devices', categoryFolder, displayName, 'DeviceConfiguration');
+            // Build per-device HW Config path, preserving TIA folder structure.
+            // Root IO devices keep the legacy flat layout; IO devices inside
+            // TIA folders use a per-device DeviceConfiguration subfolder.
+            const hwConfigPath = (0, pathBuilder_1.buildDeviceHwConfigPath)(dev, exportPath);
             try {
                 const r = await bridge.importDeviceHwConfig(dev.name, includeChannels, includeAddresses, includeNetworkConfig, true, hwConfigPath, format);
                 if (r && r.success) {
@@ -442,7 +564,33 @@ class TiaApi {
     }
     // ── Import local files → TIA ──────────────────────────────────
     /**
+     * Detect whether `inputPath` falls within a `Units/<UnitName>/` subtree
+     * exported by the Software Units flow. Returns the unit name (and the
+     * base path matching the unit root) so import can be routed to the
+     * matching PlcUnit / PlcSafetyUnit. Returns null when the path is not
+     * under a Units/ subtree.
+     */
+    static detectUnitContext(inputPath) {
+        const normalized = inputPath.replace(/\\/g, '/');
+        // Match `.../Units/<UnitName>/...` anywhere in the path.
+        const m = normalized.match(/(.*\/Units\/[^/]+)(?:\/|$)/);
+        if (!m) {
+            return null;
+        }
+        const unitRoot = m[1];
+        const unitName = unitRoot.substring(unitRoot.lastIndexOf('/') + 1);
+        if (!unitName) {
+            return null;
+        }
+        return { unitName, unitRoot: unitRoot.replace(/\//g, path.sep) };
+    }
+    /**
      * Import a single XML/SCL/s7dcl file into TIA Portal.
+     *
+     * When the file path is inside a `Units/<UnitName>/` subtree (created by
+     * `tia_export_units` / `tia_export_unit`), the import is automatically
+     * routed to the corresponding Software Unit. `unitName` / `unitKind` in
+     * `opts` override the auto-detected unit.
      */
     async importFile(deviceIdOrName, filePath, opts) {
         const guard = await this.ensureConnected();
@@ -459,12 +607,25 @@ class TiaApi {
         const overwrite = opts?.overwriteExisting !== false; // default true
         const compare = opts?.compareBeforeImport === true;
         const wsFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath))?.uri.fsPath;
+        // Auto-detect Units/ scope unless caller forced a unit explicitly.
+        let unitName = opts?.unitName;
+        const unitKind = opts?.unitKind;
+        if (!unitName) {
+            const ctx = TiaApi.detectUnitContext(filePath);
+            if (ctx) {
+                unitName = ctx.unitName;
+            }
+        }
         try {
             const bridge = this.connection.getBridge();
             const ext = path.extname(filePath).toLowerCase();
             let result;
             if (ext === '.xlsx') {
+                // XLSX tag tables are PLC-wide; unit-scoped XLSX import is not supported yet.
                 result = await bridge.importXlsxFileToTia(device.id, filePath, overwrite, compare);
+            }
+            else if (unitName) {
+                result = await bridge.importXmlFileToUnit(device.id, unitName, unitKind, filePath, overwrite, wsFolder, compare);
             }
             else {
                 result = await bridge.importXmlFileToTia(device.id, filePath, overwrite, wsFolder, compare);
@@ -472,7 +633,8 @@ class TiaApi {
             if (!result.success) {
                 return err(result.error || `Import of "${path.basename(filePath)}" failed`);
             }
-            return ok(result, `Imported ${path.basename(filePath)} into ${device.displayName || device.name}`);
+            const scopeMsg = unitName ? ` into unit "${unitName}"` : '';
+            return ok(result, `Imported ${path.basename(filePath)}${scopeMsg} into ${device.displayName || device.name}`);
         }
         catch (e) {
             return err(e instanceof Error ? e.message : String(e));
@@ -480,6 +642,9 @@ class TiaApi {
     }
     /**
      * Import every supported file in a folder (recursively) into TIA Portal.
+     *
+     * When the folder path is inside a `Units/<UnitName>/` subtree, the
+     * import is automatically routed to the matching Software Unit.
      */
     async importFolder(deviceIdOrName, folderPath, opts) {
         const guard = await this.ensureConnected();
@@ -493,17 +658,121 @@ class TiaApi {
         if (!device) {
             return err(`Device "${deviceIdOrName}" not found`);
         }
+        let unitName = opts?.unitName;
+        const unitKind = opts?.unitKind;
+        if (!unitName) {
+            const ctx = TiaApi.detectUnitContext(folderPath);
+            if (ctx) {
+                unitName = ctx.unitName;
+            }
+        }
         try {
             const bridge = this.connection.getBridge();
-            const result = await bridge.importXmlFolderToTia(device.id, folderPath, opts?.overwriteExisting !== false, opts?.recursive !== false);
+            const overwrite = opts?.overwriteExisting !== false;
+            const recursive = opts?.recursive !== false;
+            const result = unitName
+                ? await bridge.importXmlFolderToUnit(device.id, unitName, unitKind, folderPath, overwrite, recursive)
+                : await bridge.importXmlFolderToTia(device.id, folderPath, overwrite, recursive);
             if (!result.success) {
                 return err(result.error || 'Folder import failed');
             }
-            return ok(result, `Imported folder "${folderPath}" into ${device.displayName || device.name}`);
+            const scopeMsg = unitName ? ` into unit "${unitName}"` : '';
+            return ok(result, `Imported folder "${folderPath}"${scopeMsg} into ${device.displayName || device.name}`);
         }
         catch (e) {
             return err(e instanceof Error ? e.message : String(e));
         }
+    }
+    /**
+     * Import a complete Software Unit from a local workspace folder into TIA Portal.
+     *
+     * The folder must follow the Software Unit export layout:
+     *   Units/<UnitName>/_unit.json
+     *   Units/<UnitName>/Program blocks/
+     *   Units/<UnitName>/PLC data types/
+     *   Units/<UnitName>/PLC tags/
+     *
+     * `unitFolderPath` is auto-detected when omitted and the workspace contains
+     * exactly one exported unit folder.
+     */
+    async importUnit(deviceIdOrName, unitFolderPath, opts) {
+        const guard = await this.ensureConnected();
+        if (!guard.success) {
+            return guard;
+        }
+        const device = this.findDevice(deviceIdOrName);
+        if (!device) {
+            return err(`Device "${deviceIdOrName}" not found`);
+        }
+        let folderPath = unitFolderPath;
+        if (!folderPath) {
+            const workspacePath = workspace_1.WorkspaceManager.getWorkspacePath();
+            if (!workspacePath) {
+                return err('No workspace folder is open');
+            }
+            const candidates = this.findUnitFolders(workspacePath);
+            if (candidates.length === 0) {
+                return err('No Software Unit folder found in workspace');
+            }
+            if (candidates.length > 1) {
+                return err(`Multiple Software Unit folders found in workspace: ${candidates.map(c => path.basename(c)).join(', ')}. Please specify unitFolderPath.`);
+            }
+            folderPath = candidates[0];
+        }
+        if (!fs.existsSync(folderPath) || !fs.statSync(folderPath).isDirectory()) {
+            return err(`Folder not found: ${folderPath}`);
+        }
+        const metadataPath = path.join(folderPath, '_unit.json');
+        if (!fs.existsSync(metadataPath)) {
+            return err(`Selected folder is not a Software Unit export: missing _unit.json`);
+        }
+        try {
+            const bridge = this.connection.getBridge();
+            const overwrite = opts?.overwriteExisting !== false;
+            const compare = opts?.compareBeforeImport === true;
+            const createMissing = opts?.createMissingUnit !== false;
+            const deleteOrphans = opts?.deleteOrphans !== false;
+            const result = await bridge.importUnitToTia(device.id, folderPath, overwrite, compare, createMissing, deleteOrphans);
+            if (!result.success) {
+                return err(result.error || 'Software Unit export failed');
+            }
+            return ok(result, `Exported Software Unit from "${folderPath}" into ${device.displayName || device.name}`);
+        }
+        catch (e) {
+            return err(e instanceof Error ? e.message : String(e));
+        }
+    }
+    findUnitFolders(workspacePath) {
+        const results = [];
+        const exportRoot = path.join(workspacePath, 'TiaExport');
+        if (!fs.existsSync(exportRoot)) {
+            return results;
+        }
+        function scan(dir) {
+            try {
+                for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                    const fullPath = path.join(dir, entry.name);
+                    if (entry.isDirectory()) {
+                        if (entry.name === 'Units') {
+                            for (const unitEntry of fs.readdirSync(fullPath, { withFileTypes: true })) {
+                                const unitPath = path.join(fullPath, unitEntry.name);
+                                if (unitEntry.isDirectory() && fs.existsSync(path.join(unitPath, '_unit.json'))) {
+                                    results.push(unitPath);
+                                }
+                            }
+                        }
+                        else {
+                            scan(fullPath);
+                        }
+                    }
+                }
+            }
+            catch {
+                // ignore unreadable directories
+            }
+        }
+        scan(exportRoot);
+        return results;
     }
     /**
      * Push HW Configuration from the workspace into TIA Portal.
@@ -695,7 +964,7 @@ class TiaApi {
             if (!exportRoot) {
                 return err('Workspace not initialized');
             }
-            outputDirectory = path.join(exportRoot, 'Devices', 'PLCs', device.name, 'CrossReferences');
+            outputDirectory = path.join(exportRoot, 'Devices', 'PLCs', device.displayName || device.name, 'CrossReferences');
         }
         try {
             const bridge = this.connection.getBridge();

@@ -78,7 +78,7 @@ async function importTagTablesCommand(importService, item) {
         }, async (progress) => {
             progress.report({ message: `Importing tag tables...` });
             logger_1.Logger.startOperation(`Import tag tables`);
-            const result = await importService.importTagTablesFromGroup(item.parentId || '', groupName, groupPath, exportPath);
+            const result = await importService.importTagTablesFromGroup(item.parentId || '', groupName, groupPath, exportPath, item.id);
             if (result.success) {
                 const deletedCount = result.messages?.filter(m => m.type === 'deleted').length ?? 0;
                 const resultWithDeleted = { ...result, deletedCount };

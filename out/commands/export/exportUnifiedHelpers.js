@@ -124,6 +124,7 @@ function detectPlcFolders(devicePath) {
  */
 async function exportBlocksFolder(connectionService, folderPath, deviceId, forceOverwrite, progress, token) {
     const stats = { successCount: 0, errorCount: 0, skippedCount: 0 };
+    const unitCtx = (0, exportUtils_1.detectUnitContext)(folderPath);
     const basePath = (0, exportUtils_1.findProgramBlocksBasePath)(folderPath);
     const bridge = connectionService.getBridge();
     const files = await (0, exportUtils_1.getSupportedFilesInFolder)(folderPath, true);
@@ -147,7 +148,9 @@ async function exportBlocksFolder(connectionService, folderPath, deviceId, force
             continue;
         }
         try {
-            const result = await bridge.importXmlFileToTia(deviceId, file, true, basePath, !forceOverwrite);
+            const result = unitCtx
+                ? await bridge.importXmlFileToUnit(deviceId, unitCtx.unitName, undefined, file, true, basePath, !forceOverwrite)
+                : await bridge.importXmlFileToTia(deviceId, file, true, basePath, !forceOverwrite);
             if (result.success && result.skipped) {
                 stats.skippedCount++;
                 logger_1.Logger.info(`    ${progressLabel} ≡ ${fileName} (identical)`);
@@ -190,8 +193,9 @@ async function exportBlocksFolder(connectionService, folderPath, deviceId, force
 async function exportXmlFolder(connectionService, folderPath, folderType, deviceId, forceOverwrite, progress, token) {
     const stats = { successCount: 0, errorCount: 0, skippedCount: 0 };
     const bridge = connectionService.getBridge();
+    const unitCtx = (0, exportUtils_1.detectUnitContext)(folderPath);
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(folderPath));
-    const basePath = workspaceFolder?.uri.fsPath;
+    const basePath = unitCtx?.unitRoot ?? workspaceFolder?.uri.fsPath;
     const normalizedFolderType = folderType.trim().toLowerCase();
     const files = await (0, exportUtils_1.getSupportedFilesInFolder)(folderPath, true);
     if (normalizedFolderType === 'tags') {
@@ -215,7 +219,9 @@ async function exportXmlFolder(connectionService, folderPath, folderType, device
         try {
             const result = extension === '.xlsx'
                 ? await bridge.importXlsxFileToTia(deviceId, file, true, !forceOverwrite)
-                : await bridge.importXmlFileToTia(deviceId, file, true, basePath, !forceOverwrite);
+                : unitCtx
+                    ? await bridge.importXmlFileToUnit(deviceId, unitCtx.unitName, undefined, file, true, basePath, !forceOverwrite)
+                    : await bridge.importXmlFileToTia(deviceId, file, true, basePath, !forceOverwrite);
             if (result.success && result.skipped) {
                 stats.skippedCount++;
                 logger_1.Logger.info(`    ${progressLabel} ≡ ${fileName} (identical)`);

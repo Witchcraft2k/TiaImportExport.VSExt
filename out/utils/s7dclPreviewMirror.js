@@ -50,7 +50,11 @@ const vscode = __importStar(require("vscode"));
  *   <ws>/TiaExport/Projects/<proj>/Devices/<cat>/<dev>/Program blocks/<...>.s7dcl
  *   <ws>/TiaExport/Projects/<proj>/Devices/<cat>/<dev>/.tiaPreview/Program blocks/<...>.xml
  *
- * Fallback when no device root is detected in the path (rare: ad-hoc exports
+ * For Software Units the mirror is rooted inside the unit folder (V18+):
+ *   <ws>/.../Devices/<cat>/<dev>/Units/<unit>/Program blocks/<...>.s7dcl
+ *   <ws>/.../Devices/<cat>/<dev>/Units/<unit>/.tiaPreview/Program blocks/<...>.xml
+ *
+ * Fallback when no device/unit root is detected in the path (rare: ad-hoc exports
  * outside the standard layout): `<ws>/.tiaPreview/<original-relative-path>`.
  */
 exports.PREVIEW_MIRROR_DIR = '.tiaPreview';
@@ -96,6 +100,31 @@ function findDeviceRootIndex(segments) {
     return -1;
 }
 /**
+ * Find the Software Unit root inside an export path. Returns the index of the
+ * unit-name segment (the segment immediately after `Units`), or `-1` when the
+ * path does not contain a Software Unit layout.
+ */
+function findUnitRootIndex(segments) {
+    for (let i = 2; i < segments.length - 1; i++) {
+        if (segments[i].toLowerCase() === 'units') {
+            // segments[i+1] = unit display name; mirror is rooted there.
+            return i + 1;
+        }
+    }
+    return -1;
+}
+/**
+ * Resolve the mirror root for a path. Prefer the Software Unit root when
+ * present; otherwise fall back to the device root.
+ */
+function findMirrorRootIndex(segments) {
+    const unitIdx = findUnitRootIndex(segments);
+    if (unitIdx >= 0) {
+        return unitIdx;
+    }
+    return findDeviceRootIndex(segments);
+}
+/**
  * Map an export directory (where `.s7dcl` files will be written) to the
  * parallel `.tiaPreview/...` directory where the XML mirror should land.
  * Returns `undefined` when no workspace is open or the path escapes the
@@ -119,11 +148,11 @@ function getMirrorExportPath(originalExportPath) {
     if (segments[0] === exports.PREVIEW_MIRROR_DIR || segments.includes(exports.PREVIEW_MIRROR_DIR)) {
         return undefined;
     }
-    const deviceIdx = findDeviceRootIndex(segments);
-    if (deviceIdx >= 0 && deviceIdx < segments.length) {
-        // <ws>/<...up-to-and-including-deviceName>/.tiaPreview/<rest>
-        const head = segments.slice(0, deviceIdx + 1);
-        const tail = segments.slice(deviceIdx + 1);
+    const rootIdx = findMirrorRootIndex(segments);
+    if (rootIdx >= 0 && rootIdx < segments.length) {
+        // <ws>/<...up-to-and-including-root>/.tiaPreview/<rest>
+        const head = segments.slice(0, rootIdx + 1);
+        const tail = segments.slice(rootIdx + 1);
         return path.join(ws, ...head, exports.PREVIEW_MIRROR_DIR, ...tail);
     }
     // Fallback: workspace-root mirror.
@@ -145,12 +174,12 @@ function findPreviewXmlForS7dcl(s7dclPath) {
         if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
             const segments = relative.split(/[\\/]/).filter(Boolean);
             const insidePreview = segments.includes(exports.PREVIEW_MIRROR_DIR);
-            // (1) per-device mirror
+            // (1) per-device / per-unit mirror
             if (!insidePreview) {
-                const deviceIdx = findDeviceRootIndex(segments);
-                if (deviceIdx >= 0 && deviceIdx < segments.length) {
-                    const head = segments.slice(0, deviceIdx + 1);
-                    const tail = segments.slice(deviceIdx + 1);
+                const rootIdx = findMirrorRootIndex(segments);
+                if (rootIdx >= 0 && rootIdx < segments.length) {
+                    const head = segments.slice(0, rootIdx + 1);
+                    const tail = segments.slice(rootIdx + 1);
                     const candidate = path.join(ws, ...head, exports.PREVIEW_MIRROR_DIR, ...tail).replace(/\.s7dcl$/i, '.xml');
                     if (fs.existsSync(candidate)) {
                         return candidate;

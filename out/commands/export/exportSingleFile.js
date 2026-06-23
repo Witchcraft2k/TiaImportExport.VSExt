@@ -129,11 +129,14 @@ async function exportMultipleFilesCore(connectionService, config, uris) {
                     logger_1.Logger.info(`${progressLabel} \ud83d\udd12 ${fileName} (know-how protected - skipped)`);
                     continue;
                 }
+                const unitCtx = (0, exportUtils_1.detectUnitContext)(filePath);
                 const basePath = config.useBlocksBasePath
                     ? (0, exportUtils_1.findProgramBlocksBasePath)(filePath)
-                    : vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath))?.uri.fsPath;
+                    : (unitCtx?.unitRoot ?? vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath))?.uri.fsPath);
                 try {
-                    const result = await bridge.importXmlFileToTia(selectedDevice.deviceId, filePath, true, basePath, overwriteMode.compareBeforeImport);
+                    const result = unitCtx
+                        ? await bridge.importXmlFileToUnit(selectedDevice.deviceId, unitCtx.unitName, undefined, filePath, true, basePath, overwriteMode.compareBeforeImport, true)
+                        : await bridge.importXmlFileToTia(selectedDevice.deviceId, filePath, true, basePath, overwriteMode.compareBeforeImport);
                     if (result.success && result.skipped) {
                         skippedCount++;
                         logger_1.Logger.info(`${progressLabel} \u2261 ${fileName} (identical)`);
@@ -226,12 +229,16 @@ async function exportSingleFileCore(connectionService, config, uri) {
         }
         logger_1.Logger.info(`Device: ${selectedDevice.label}`);
         logger_1.Logger.info(`Mode: ${overwriteMode.forceOverwrite ? 'Overwrite All' : 'Check and Overwrite Differences'}`);
-        // Determine base path
+        // Determine Software Unit scope and base path
+        const unitCtx = (0, exportUtils_1.detectUnitContext)(filePath);
         const basePath = config.useBlocksBasePath
             ? (0, exportUtils_1.findProgramBlocksBasePath)(filePath)
-            : vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath))?.uri.fsPath;
+            : (unitCtx?.unitRoot ?? vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath))?.uri.fsPath);
         if (basePath) {
             logger_1.Logger.info(`Base path: ${basePath}`);
+        }
+        if (unitCtx) {
+            logger_1.Logger.info(`Software Unit scope: ${unitCtx.unitName}`);
         }
         const singleExportSuccess = await vscode.window.withProgress({
             location: vscode.ProgressLocation.Notification,
@@ -242,7 +249,9 @@ async function exportSingleFileCore(connectionService, config, uri) {
             progress.report({ message: `Exporting ${typeLabel} to ${selectedDevice.label}...` });
             logger_1.Logger.startOperation(`${config.logSection}: ${filePath}`);
             const bridge = connectionService.getBridge();
-            const result = await bridge.importXmlFileToTia(selectedDevice.deviceId, filePath, true, basePath, overwriteMode.compareBeforeImport);
+            const result = unitCtx
+                ? await bridge.importXmlFileToUnit(selectedDevice.deviceId, unitCtx.unitName, undefined, filePath, true, basePath, overwriteMode.compareBeforeImport, true)
+                : await bridge.importXmlFileToTia(selectedDevice.deviceId, filePath, true, basePath, overwriteMode.compareBeforeImport);
             const relPath = vscode.workspace.asRelativePath(filePath);
             if (result.success && result.skipped) {
                 logger_1.Logger.success(`${config.useBlocksBasePath ? 'Block' : 'File'} identical - skipped`);

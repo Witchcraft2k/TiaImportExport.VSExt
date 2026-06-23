@@ -2,7 +2,7 @@
 	"name": "tia-import",
 	"displayName": "TIA Portal Import",
 	"description": "Import/export PLC programs from/to Siemens TIA Portal using TIA Portal Openness API",
-	"version": "3.0.12",
+	"version": "3.0.57",
 	"license": "MIT",
 	"publisher": "MariuszCzyrnek",
 	"author": "Mariusz Czyrnek",
@@ -46,6 +46,9 @@
 		"onLanguageModelTool:tia_list_blocks",
 		"onLanguageModelTool:tia_export_block",
 		"onLanguageModelTool:tia_export_device",
+		"onLanguageModelTool:tia_list_units",
+		"onLanguageModelTool:tia_export_units",
+		"onLanguageModelTool:tia_export_unit",
 		"onLanguageModelTool:tia_export_hw_config",
 		"onLanguageModelTool:tia_import_file",
 		"onLanguageModelTool:tia_import_folder",
@@ -165,6 +168,11 @@
 				"command": "tia-import.importDeviceCategoryHwConfig",
 				"title": "TIA Import: Import HW Config for All Devices in Category",
 				"icon": "$(server-environment)"
+			},
+			{
+				"command": "tia-import.importSoftwareUnit",
+				"title": "TIA Import: Import Software Unit",
+				"icon": "$(package)"
 			},
 			{
 				"command": "tia-import.importLibrary",
@@ -305,6 +313,11 @@
 				"command": "tia-import.exportXlsxFolderToTia",
 				"title": "Export XLSX Tags to TIA Portal (Folder)",
 				"icon": "$(folder-opened)"
+			},
+			{
+				"command": "tia-import.exportUnitToTia",
+				"title": "Export Software Unit to TIA Portal",
+				"icon": "$(package)"
 			}
 		],
 		"viewsContainers": {
@@ -558,6 +571,16 @@
 					"group": "1_hwconfig"
 				},
 				{
+					"command": "tia-import.importSoftwareUnit",
+					"when": "view == tiaProjectExplorer && viewItem == softwareUnit",
+					"group": "inline"
+				},
+				{
+					"command": "tia-import.importSoftwareUnit",
+					"when": "view == tiaProjectExplorer && viewItem == softwareUnit",
+					"group": "1_export"
+				},
+				{
 					"command": "tia-import.importAllHmi",
 					"when": "view == tiaProjectExplorer && viewItem == hmiSoftware",
 					"group": "inline"
@@ -757,6 +780,11 @@
 					"command": "tia-import.exportProgramToTia",
 					"when": "explorerResourceIsFolder && resourcePath =~ /.*Devices[/\\\\](PLCs|HMIs|IO_Devices|Computers)[/\\\\][^/\\\\]+$/",
 					"group": "tiaPortal@1"
+				},
+				{
+					"command": "tia-import.exportUnitToTia",
+					"when": "explorerResourceIsFolder && resourcePath =~ /.*[/\\\\]Units[/\\\\][^/\\\\]+$/",
+					"group": "tiaPortal@0"
 				}
 			]
 		},
@@ -946,6 +974,88 @@
 				}
 			},
 			{
+				"name": "tia_list_units",
+				"displayName": "TIA: List Software Units",
+				"modelDescription": "List Software Units (PlcUnit / PlcSafetyUnit) on a device. Software Units are TIA Portal V18+ encapsulations with their own Program blocks, PLC tags and PLC data types. Returns `supported:false` on older TIA runtimes.",
+				"toolReferenceName": "tiaListUnits",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(symbol-namespace)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Device id, technical name or display name."
+						}
+					},
+					"required": [
+						"device"
+					]
+				}
+			},
+			{
+				"name": "tia_export_units",
+				"displayName": "TIA: Export All Software Units",
+				"modelDescription": "Export every Software Unit (standard + safety) of a device to `Devices/<Category>/<Device>/Units/<UnitName>/{Program blocks, PLC data types, PLC tags}`. Use this instead of tia_export_unit when iterating all units.",
+				"toolReferenceName": "tiaExportUnits",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(cloud-download)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Device id, technical name or display name."
+						}
+					},
+					"required": [
+						"device"
+					]
+				}
+			},
+			{
+				"name": "tia_export_unit",
+				"displayName": "TIA: Export Software Unit",
+				"modelDescription": "Export a single Software Unit by name to `Devices/<Category>/<Device>/Units/<UnitName>/`. Use `kind` to disambiguate between standard PlcUnit and PlcSafetyUnit when both compositions could contain the same name.",
+				"toolReferenceName": "tiaExportUnit",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(cloud-download)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Device id, technical name or display name."
+						},
+						"unitName": {
+							"type": "string",
+							"description": "Name of the Software Unit to export."
+						},
+						"kind": {
+							"type": "string",
+							"enum": [
+								"plc",
+								"safety"
+							],
+							"description": "Optional. 'plc' for standard PlcUnit (default), 'safety' for fail-safe PlcSafetyUnit."
+						}
+					},
+					"required": [
+						"device",
+						"unitName"
+					]
+				}
+			},
+			{
 				"name": "tia_export_hw_config",
 				"displayName": "TIA: Export HW Config",
 				"modelDescription": "Export hardware configuration from TIA Portal to the workspace. When `device` is omitted, exports HW config for every device in the project (PLCs, HMIs, IO_Devices). Files land under Devices/<Category>/<DeviceName>/DeviceConfiguration/ (or Devices/IO_Devices/ for IO devices). Format follows tiaImport.hwConfigFormat (xml or cax/AutomationML) unless overridden.",
@@ -996,7 +1106,7 @@
 			{
 				"name": "tia_import_file",
 				"displayName": "TIA: Import File",
-				"modelDescription": "Import a single XML / SCL / s7dcl / xlsx file from the workspace into TIA Portal. Overwriting requires user confirmation unless tiaImport.lmTools.autoConfirmImports is enabled.",
+				"modelDescription": "Import a single XML / SCL / s7dcl / xlsx file from the workspace into TIA Portal. When the file path is inside a `Units/<UnitName>/` subtree (created by tia_export_unit), the import is automatically routed to the matching Software Unit. Override with `unitName`/`unitKind`. Overwriting requires user confirmation unless tiaImport.lmTools.autoConfirmImports is enabled.",
 				"toolReferenceName": "tiaImportFile",
 				"canBeReferencedInPrompt": true,
 				"tags": [
@@ -1022,6 +1132,18 @@
 							"type": "boolean",
 							"default": false,
 							"description": "Skip import when the existing TIA object is identical."
+						},
+						"unitName": {
+							"type": "string",
+							"description": "Optional Software Unit (PlcUnit/PlcSafetyUnit) name. Auto-detected when filePath is inside a Units/<UnitName>/ subtree."
+						},
+						"unitKind": {
+							"type": "string",
+							"enum": [
+								"plc",
+								"safety"
+							],
+							"description": "Optional unit kind. 'plc' = standard PlcUnit (default), 'safety' = fail-safe PlcSafetyUnit."
 						}
 					},
 					"required": [
@@ -1033,7 +1155,7 @@
 			{
 				"name": "tia_import_folder",
 				"displayName": "TIA: Import Folder",
-				"modelDescription": "Import every supported file in a workspace folder into TIA Portal. Overwriting requires user confirmation unless tiaImport.lmTools.autoConfirmImports is enabled.",
+				"modelDescription": "Import every supported file in a workspace folder into TIA Portal. When the folder is inside a `Units/<UnitName>/` subtree, the import is automatically routed to the matching Software Unit. Override with `unitName`/`unitKind`. Overwriting requires user confirmation unless tiaImport.lmTools.autoConfirmImports is enabled.",
 				"toolReferenceName": "tiaImportFolder",
 				"canBeReferencedInPrompt": true,
 				"tags": [
@@ -1058,11 +1180,66 @@
 						"recursive": {
 							"type": "boolean",
 							"default": true
+						},
+						"unitName": {
+							"type": "string",
+							"description": "Optional Software Unit (PlcUnit/PlcSafetyUnit) name. Auto-detected when folderPath is inside a Units/<UnitName>/ subtree."
+						},
+						"unitKind": {
+							"type": "string",
+							"enum": [
+								"plc",
+								"safety"
+							],
+							"description": "Optional unit kind. 'plc' = standard PlcUnit (default), 'safety' = fail-safe PlcSafetyUnit."
 						}
 					},
 					"required": [
 						"device",
 						"folderPath"
+					]
+				}
+			},
+			{
+				"name": "tia_import_unit",
+				"displayName": "TIA: Export Software Unit",
+				"modelDescription": "Import a complete Software Unit (PlcUnit / PlcSafetyUnit) from a workspace folder into TIA Portal. The folder must contain `_unit.json` and the standard `Program blocks`, `PLC data types`, `PLC tags` subfolders produced by `tia_export_unit`. The unit is created in TIA Portal if it does not exist. Overwriting requires user confirmation unless `tiaImport.lmTools.autoConfirmImports` is enabled.",
+				"toolReferenceName": "tiaImportUnit",
+				"canBeReferencedInPrompt": true,
+				"tags": [
+					"tia"
+				],
+				"icon": "$(package)",
+				"inputSchema": {
+					"type": "object",
+					"properties": {
+						"device": {
+							"type": "string",
+							"description": "Target device id or name."
+						},
+						"unitFolderPath": {
+							"type": "string",
+							"description": "Absolute path to the exported Software Unit folder. Auto-detected from the workspace when omitted and a single unit export exists."
+						},
+						"overwriteExisting": {
+							"type": "boolean",
+							"default": true
+						},
+						"compareBeforeImport": {
+							"type": "boolean",
+							"default": false
+						},
+						"createMissingUnit": {
+							"type": "boolean",
+							"default": true
+						},
+						"deleteOrphans": {
+							"type": "boolean",
+							"default": true
+						}
+					},
+					"required": [
+						"device"
 					]
 				}
 			},
@@ -1547,8 +1724,8 @@
 		"url": "https://github.com/cmariusz/TiaImportExport.VSExt"
 	},
 	"__metadata": {
-		"installedTimestamp": 1781155484044,
+		"installedTimestamp": 1782171673037,
 		"targetPlatform": "undefined",
-		"size": 119290729
+		"size": 119670840
 	}
 }

@@ -78,7 +78,7 @@ async function importUdtsCommand(importService, item) {
         }, async (progress) => {
             progress.report({ message: `Importing data types...` });
             logger_1.Logger.startOperation(`Import UDTs`);
-            const result = await importService.importUdtsFromGroup(item.parentId || '', groupName, groupPath, exportPath);
+            const result = await importService.importUdtsFromGroup(item.parentId || '', groupName, groupPath, exportPath, item.id);
             if (result.success) {
                 const deletedCount = result.messages?.filter(m => m.type === 'deleted').length ?? 0;
                 const resultWithDeleted = { ...result, deletedCount };

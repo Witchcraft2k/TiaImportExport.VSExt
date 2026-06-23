@@ -42,6 +42,7 @@ exports.getSupportedFilesInFolder = getSupportedFilesInFolder;
 exports.getEmptyFoldersInDirectory = getEmptyFoldersInDirectory;
 exports.detectFolderType = detectFolderType;
 exports.findProgramBlocksBasePath = findProgramBlocksBasePath;
+exports.detectUnitContext = detectUnitContext;
 exports.logImportResultDetails = logImportResultDetails;
 exports.logDeleteResults = logDeleteResults;
 exports.reportExportSummary = reportExportSummary;
@@ -448,6 +449,27 @@ function findProgramBlocksBasePath(filePath) {
     }
     const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath));
     return workspaceFolder?.uri.fsPath;
+}
+/**
+ * Detect whether `inputPath` falls within a `Units/<UnitName>/` subtree
+ * exported by the Software Units flow. Returns the unit name (and the
+ * base path matching the unit root) so export can be routed to the
+ * matching PlcUnit / PlcSafetyUnit. Returns null when the path is not
+ * under a Units/ subtree.
+ */
+function detectUnitContext(inputPath) {
+    const normalized = inputPath.replace(/\\/g, '/');
+    // Match `.../Units/<UnitName>/...` anywhere in the path.
+    const m = normalized.match(/(.*\/Units\/[^/]+)(?:\/|$)/);
+    if (!m) {
+        return null;
+    }
+    const unitRoot = m[1];
+    const unitName = unitRoot.substring(unitRoot.lastIndexOf('/') + 1);
+    if (!unitName) {
+        return null;
+    }
+    return { unitName, unitRoot: unitRoot.replace(/\//g, path.sep) };
 }
 /**
  * Log import result details (messages and summary)

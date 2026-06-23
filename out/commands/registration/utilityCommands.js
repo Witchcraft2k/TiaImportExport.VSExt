@@ -134,9 +134,25 @@ function registerUtilityCommands(ctx) {
         vscode.window.showInformationMessage(`Log Details: ${newValue ? 'On' : 'Off'}`);
     });
     (0, commandContext_1.register)(ctx, 'tia-import.toggleCli', async () => {
-        const current = vscode.workspace.getConfiguration('tiaImport').get('cli.enabled') ?? false;
+        const cfg = vscode.workspace.getConfiguration('tiaImport');
+        const inspection = cfg.inspect('cli.enabled');
+        const current = inspection?.workspaceValue ?? inspection?.globalValue ?? inspection?.defaultValue ?? false;
         const newValue = !current;
-        await vscode.workspace.getConfiguration('tiaImport').update('cli.enabled', newValue, vscode.ConfigurationTarget.Global);
+        // Toggle at the same level where the setting is currently defined.
+        // Workspace settings override user settings, so if the workspace has
+        // it set we must flip it there for the effective value to change.
+        let target = vscode.ConfigurationTarget.Global;
+        if (inspection?.workspaceValue !== undefined) {
+            target = vscode.ConfigurationTarget.Workspace;
+        }
+        try {
+            await cfg.update('cli.enabled', newValue, target);
+        }
+        catch {
+            // If updating at workspace level fails (e.g. no workspace open),
+            // fall back to global settings.
+            await cfg.update('cli.enabled', newValue, vscode.ConfigurationTarget.Global);
+        }
         connectionTreeProvider.refresh();
         vscode.window.showInformationMessage(newValue
             ? 'TIA Import: CLI bridge enabled. A .tia/cli.json file will be created with the connection token.'

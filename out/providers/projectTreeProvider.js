@@ -47,6 +47,8 @@ class TiaProjectTreeProvider {
     _onDidChangeTreeData = new vscode.EventEmitter();
     onDidChangeTreeData = this._onDidChangeTreeData.event;
     _connectionService;
+    /** Map of device-folder node IDs to their resolved children (devices + sub-folders). */
+    _folderNodes = new Map();
     constructor(connectionService) {
         this._connectionService = connectionService;
         // Listen for project changes
@@ -86,6 +88,8 @@ class TiaProjectTreeProvider {
             case 'deviceCategory':
             case 'deviceCategoryHwOnly':
                 return this.getDevicesInCategory(element.id, project);
+            case 'deviceFolder':
+                return this.getDeviceFolderChildren(element.id);
             case 'device':
             case 'deviceWithPlc':
                 return this.getDeviceSoftwareItems(element.id, project);
@@ -113,6 +117,10 @@ class TiaProjectTreeProvider {
                 return this.getUdtGroupItems(element.id, element.parentId, project, element.metadata?.groupPath || '', element.metadata);
             case 'watchTableGroup':
                 return this.getWatchTableGroupItems(element.id, element.parentId, project, element.metadata?.groupPath || '', element.metadata);
+            case 'softwareUnitsFolder':
+                return this.getSoftwareUnitsFolderItems(element.metadata);
+            case 'softwareUnit':
+                return this.getSoftwareUnitChildren(element.metadata);
             case 'libraryFolder':
                 return this.getLibraryFolderItems(element.metadata);
             case 'libraryRoot':
@@ -163,32 +171,87 @@ class TiaProjectTreeProvider {
         return items;
     }
     /**
-     * Get devices within a specific category
+     * Get devices within a specific category, grouped by TIA Portal folder path.
      */
     getDevicesInCategory(category, project) {
+        // Clear cached folder nodes for this category to avoid stale data.
+        for (const [id] of this._folderNodes) {
+            if (id.startsWith(`${project.id}/${category}/folder/`)) {
+                this._folderNodes.delete(id);
+            }
+        }
         const devicesInCategory = project.devices.filter(d => (0, projectImport_1.getDeviceCategoryFolder)(d.type) === category);
         // Sort devices by display name (same order as TIA Portal explorer)
         const sortedDevices = [...devicesInCategory].sort((a, b) => (a.displayName || a.name).localeCompare(b.displayName || b.name, undefined, { sensitivity: 'base' }));
-        return sortedDevices.map(device => {
-            const hasPlcSoftware = device.plcSoftware && device.plcSoftware.length > 0;
-            const hasHmiSoftware = device.hmiSoftware && device.hmiSoftware.length > 0;
-            const hasSoftware = hasPlcSoftware || hasHmiSoftware;
-            // IO_Devices category contains distributed I/O / drives - hide software import even
-            // if the device technically reports software, since users only want HW config there.
-            const isIoDevicesCategory = category === 'IO_Devices';
-            // Different context for devices with/without software
-            const contextValue = (hasSoftware && !isIoDevicesCategory) ? 'deviceWithPlc' : 'deviceHwOnly';
-            // Only collapsible if has software to show
-            const collapsibleState = (hasSoftware && !isIoDevicesCategory)
-                ? vscode.TreeItemCollapsibleState.Collapsed
-                : vscode.TreeItemCollapsibleState.None;
-            return new TiaTreeItem_1.TiaTreeItem(device.displayName || device.name, device.id, contextValue, collapsibleState, project.id, {
-                deviceType: device.type,
-                technicalName: device.name,
-                hasPlcSoftware,
-                hasHmiSoftware,
-                category
-            });
+        // Group by folder path, e.g. "LineA/Station1".
+        const root = new FolderNode('', `${project.id}/${category}`, project.id, category, project.id);
+        for (const device of sortedDevices) {
+            const folderPath = device.folderPath;
+            if (folderPath) {
+                const segments = folderPath.split('/').filter(Boolean);
+                let current = root;
+                for (const segment of segments) {
+                    current = current.getOrCreateChild(segment);
+                }
+                current.devices.push(device);
+            }
+            else {
+                root.devices.push(device);
+            }
+        }
+        // Cache all folder nodes so getChildren can resolve them later.
+        this.cacheFolderNodes(root, category);
+        return this.buildTreeItemsFromFolderNode(root);
+    }
+    cacheFolderNodes(node, category) {
+        if (node.id !== `${node.parentId}/${category}`) {
+            // This is a real folder node (not the synthetic root).
+            this._folderNodes.set(node.id, node);
+        }
+        for (const child of node.children.values()) {
+            this.cacheFolderNodes(child, category);
+        }
+    }
+    getDeviceFolderChildren(folderId) {
+        const node = this._folderNodes.get(folderId);
+        if (!node) {
+            return [];
+        }
+        return this.buildTreeItemsFromFolderNode(node);
+    }
+    buildTreeItemsFromFolderNode(node) {
+        const items = [];
+        // Devices at this level (root or inside a folder)
+        for (const device of node.devices) {
+            items.push(this.createDeviceTreeItem(device, node.category, node.projectId, node.id));
+        }
+        // Sub-folders
+        for (const child of node.children.values()) {
+            const folderItem = new TiaTreeItem_1.TiaTreeItem(child.name, child.id, 'deviceFolder', vscode.TreeItemCollapsibleState.Collapsed, node.id, { category: node.category });
+            items.push(folderItem);
+        }
+        return items;
+    }
+    createDeviceTreeItem(device, category, projectId, parentId) {
+        const hasPlcSoftware = device.plcSoftware && device.plcSoftware.length > 0;
+        const hasHmiSoftware = device.hmiSoftware && device.hmiSoftware.length > 0;
+        const hasSoftware = hasPlcSoftware || hasHmiSoftware;
+        // IO_Devices category contains distributed I/O / drives - hide software import even
+        // if the device technically reports software, since users only want HW config there.
+        const isIoDevicesCategory = category === 'IO_Devices';
+        // Different context for devices with/without software
+        const contextValue = (hasSoftware && !isIoDevicesCategory) ? 'deviceWithPlc' : 'deviceHwOnly';
+        // Only collapsible if has software to show
+        const collapsibleState = (hasSoftware && !isIoDevicesCategory)
+            ? vscode.TreeItemCollapsibleState.Collapsed
+            : vscode.TreeItemCollapsibleState.None;
+        return new TiaTreeItem_1.TiaTreeItem(device.displayName || device.name, device.id, contextValue, collapsibleState, parentId, {
+            deviceType: device.type,
+            technicalName: device.name,
+            folderPath: device.folderPath,
+            hasPlcSoftware,
+            hasHmiSoftware,
+            category
         });
     }
     /**
@@ -256,6 +319,15 @@ class TiaProjectTreeProvider {
                 items.push(new TiaTreeItem_1.TiaTreeItem(group.name, group.id, // Use group.id directly (now contains full path)
                 'watchTableGroup', vscode.TreeItemCollapsibleState.Collapsed, plcId, { groupName: group.name, groupData: group, groupPath: '', plcId: plcId }));
             }
+        }
+        // Software Units folder (TIA Portal V18+) — listed flat, one entry per unit.
+        if (plc.units && plc.units.length > 0) {
+            const safetyCount = plc.units.filter(u => u.kind === 'safety').length;
+            const folder = new TiaTreeItem_1.TiaTreeItem('Software Units', `${plcId}/Units`, 'softwareUnitsFolder', vscode.TreeItemCollapsibleState.Collapsed, plcId, { plcId, units: plc.units });
+            folder.description = safetyCount > 0
+                ? `${plc.units.length} (${safetyCount} safety)`
+                : `${plc.units.length}`;
+            items.push(folder);
         }
         return items;
     }
@@ -417,7 +489,8 @@ class TiaProjectTreeProvider {
         if (!plc) {
             return [];
         }
-        const group = (0, treeHelpers_1.findBlockGroup)(plc.blockGroups, groupId);
+        const group = (0, treeHelpers_1.findBlockGroup)(plc.blockGroups, groupId)
+            ?? this.findBlockGroupInUnits(plc, groupId);
         if (!group) {
             return [];
         }
@@ -454,10 +527,11 @@ class TiaProjectTreeProvider {
         const deviceId = plcId.split('/')[0]; // First segment is device ID
         const device = project.devices.find(d => d.id === deviceId);
         const plc = device?.plcSoftware.find(p => p.id === plcId);
-        if (!plc || !plc.tagTableGroups) {
+        if (!plc || (!plc.tagTableGroups && !plc.units)) {
             return [];
         }
-        const group = (0, treeHelpers_1.findTagTableGroup)(plc.tagTableGroups, groupId);
+        const group = (0, treeHelpers_1.findTagTableGroup)(plc.tagTableGroups || [], groupId)
+            ?? this.findTagTableGroupInUnits(plc, groupId);
         if (!group) {
             return [];
         }
@@ -484,10 +558,11 @@ class TiaProjectTreeProvider {
         const deviceId = plcId.split('/')[0]; // First segment is device ID
         const device = project.devices.find(d => d.id === deviceId);
         const plc = device?.plcSoftware.find(p => p.id === plcId);
-        if (!plc || !plc.udtGroups) {
+        if (!plc || (!plc.udtGroups && !plc.units)) {
             return [];
         }
-        const group = (0, treeHelpers_1.findUdtGroup)(plc.udtGroups, groupId);
+        const group = (0, treeHelpers_1.findUdtGroup)(plc.udtGroups || [], groupId)
+            ?? this.findUdtGroupInUnits(plc, groupId);
         if (!group) {
             return [];
         }
@@ -504,6 +579,38 @@ class TiaProjectTreeProvider {
             items.push(new TiaTreeItem_1.TiaTreeItem(udt.name, udt.id, 'udt', vscode.TreeItemCollapsibleState.None, plcId, { groupPath: currentGroupPath || '', plcId: plcId }));
         }
         return items;
+    }
+    /**
+     * Walk all Software Units of a PLC and search their block-group trees for
+     * the given id. Allows the same `blockGroup` rendering path to handle both
+     * PLC-root groups and unit-scoped groups (IDs are globally unique).
+     */
+    findBlockGroupInUnits(plc, groupId) {
+        for (const unit of plc.units || []) {
+            const hit = (0, treeHelpers_1.findBlockGroup)(unit.blockGroups || [], groupId);
+            if (hit) {
+                return hit;
+            }
+        }
+        return undefined;
+    }
+    findTagTableGroupInUnits(plc, groupId) {
+        for (const unit of plc.units || []) {
+            const hit = (0, treeHelpers_1.findTagTableGroup)(unit.tagTableGroups || [], groupId);
+            if (hit) {
+                return hit;
+            }
+        }
+        return undefined;
+    }
+    findUdtGroupInUnits(plc, groupId) {
+        for (const unit of plc.units || []) {
+            const hit = (0, treeHelpers_1.findUdtGroup)(unit.udtGroups || [], groupId);
+            if (hit) {
+                return hit;
+            }
+        }
+        return undefined;
     }
     /**
      * Get watch table group contents (tables and subgroups)
@@ -532,6 +639,60 @@ class TiaProjectTreeProvider {
         // Add watch tables
         for (const table of group.watchTables || []) {
             items.push(new TiaTreeItem_1.TiaTreeItem(table.name, table.id, 'watchTable', vscode.TreeItemCollapsibleState.None, plcId, { groupPath: currentGroupPath || '', plcId: plcId }));
+        }
+        return items;
+    }
+    /**
+     * Children of the "Software Units" folder under a PLC software node.
+     * Each unit becomes a leaf item; export commands target it by name+kind.
+     */
+    getSoftwareUnitsFolderItems(metadata) {
+        const units = metadata?.units;
+        const plcId = metadata?.plcId;
+        if (!units || units.length === 0 || !plcId) {
+            return [];
+        }
+        const sorted = [...units].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+        return sorted.map(unit => {
+            const hasContent = (unit.blockGroups && unit.blockGroups.length > 0) ||
+                (unit.tagTableGroups && unit.tagTableGroups.length > 0) ||
+                (unit.udtGroups && unit.udtGroups.length > 0);
+            const item = new TiaTreeItem_1.TiaTreeItem(unit.name, `${plcId}/Units/${unit.kind}/${unit.name}`, 'softwareUnit', hasContent ? vscode.TreeItemCollapsibleState.Collapsed : vscode.TreeItemCollapsibleState.None, plcId, { unit, plcId });
+            item.description = unit.kind === 'safety' ? 'F-Unit' : 'Unit';
+            const tooltipLines = [`${unit.kind === 'safety' ? 'Fail-safe Software Unit' : 'Software Unit'}: ${unit.name}`];
+            if (unit.author) {
+                tooltipLines.push(`Author: ${unit.author}`);
+            }
+            if (unit.namespacePreset) {
+                tooltipLines.push(`Namespace: ${unit.namespacePreset}`);
+            }
+            if (unit.comment) {
+                tooltipLines.push(`Comment: ${unit.comment}`);
+            }
+            item.tooltip = tooltipLines.join('\n');
+            return item;
+        });
+    }
+    /**
+     * Children of a single Software Unit. Renders its Program blocks / PLC data
+     * types / PLC tags root groups using the same context values as regular PLC
+     * software so existing block/UDT/tag-table navigation works inside units.
+     */
+    getSoftwareUnitChildren(metadata) {
+        const unit = metadata?.unit;
+        const plcId = metadata?.plcId;
+        if (!unit || !plcId) {
+            return [];
+        }
+        const items = [];
+        for (const group of unit.blockGroups || []) {
+            items.push(new TiaTreeItem_1.TiaTreeItem(group.name, group.id, 'blockGroup', vscode.TreeItemCollapsibleState.Collapsed, plcId, { groupName: group.name, groupPath: '', plcId }));
+        }
+        for (const group of unit.udtGroups || []) {
+            items.push(new TiaTreeItem_1.TiaTreeItem(group.name, group.id, 'udtGroup', vscode.TreeItemCollapsibleState.Collapsed, plcId, { groupName: group.name, groupData: group, groupPath: '', plcId }));
+        }
+        for (const group of unit.tagTableGroups || []) {
+            items.push(new TiaTreeItem_1.TiaTreeItem(group.name, group.id, 'tagTableGroup', vscode.TreeItemCollapsibleState.Collapsed, plcId, { groupName: group.name, groupData: group, groupPath: '', plcId }));
         }
         return items;
     }
@@ -621,5 +782,36 @@ function stripLibraryTypesPrefix(id) {
     if (normalized.startsWith('Library/Types/'))
         return normalized.substring('Library/Types/'.length);
     return normalized;
+}
+/**
+ * Lightweight tree node used to group devices by their TIA Portal folder path.
+ */
+/**
+ * Lightweight tree node used to group devices by their TIA Portal folder path.
+ */
+class FolderNode {
+    name;
+    id;
+    parentId;
+    category;
+    projectId;
+    devices = [];
+    children = new Map();
+    constructor(name, id, parentId, category, projectId) {
+        this.name = name;
+        this.id = id;
+        this.parentId = parentId;
+        this.category = category;
+        this.projectId = projectId;
+    }
+    getOrCreateChild(name) {
+        let child = this.children.get(name);
+        if (!child) {
+            const childId = `${this.id}/${name}`;
+            child = new FolderNode(name, childId, this.id, this.category, this.projectId);
+            this.children.set(name, child);
+        }
+        return child;
+    }
 }
 //# sourceMappingURL=projectTreeProvider.js.map

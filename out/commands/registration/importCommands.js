@@ -17,6 +17,7 @@ const importHmiTagsCommand_1 = require("../importHmiTagsCommand");
 const importHmiConnectionsCommand_1 = require("../importHmiConnectionsCommand");
 const importAllHmiCommand_1 = require("../importAllHmiCommand");
 const importDeviceCategoryCommand_1 = require("../importDeviceCategoryCommand");
+const importSoftwareUnitCommand_1 = require("../importSoftwareUnitCommand");
 const importLibraryCommand_1 = require("../importLibraryCommand");
 /**
  * Commands that pull data *from* TIA Portal into local files
@@ -39,6 +40,7 @@ function registerImportCommands(ctx) {
     (0, commandContext_1.register)(ctx, 'tia-import.importHmiConnections', (item) => (0, importHmiConnectionsCommand_1.importHmiConnectionsCommand)(importService, item));
     (0, commandContext_1.register)(ctx, 'tia-import.importAllHmi', (item) => (0, importAllHmiCommand_1.importAllHmiCommand)(importService, item));
     (0, commandContext_1.register)(ctx, 'tia-import.importDeviceCategory', (item) => (0, importDeviceCategoryCommand_1.importDeviceCategoryCommand)(importService, connectionService, item));
+    (0, commandContext_1.register)(ctx, 'tia-import.importSoftwareUnit', (item) => (0, importSoftwareUnitCommand_1.importSoftwareUnitCommand)(importService, item));
     (0, commandContext_1.register)(ctx, 'tia-import.importLibrary', () => (0, importLibraryCommand_1.importLibraryCommand)(importService));
     (0, commandContext_1.register)(ctx, 'tia-import.importLibraryFolder', (item) => (0, importLibraryCommand_1.importLibraryFolderCommand)(importService, item));
     (0, commandContext_1.register)(ctx, 'tia-import.importLibraryType', (item) => (0, importLibraryCommand_1.importLibraryTypeCommand)(importService, item));

@@ -40,6 +40,7 @@ const logger_1 = require("../utils/logger");
 const workspace_1 = require("../utils/workspace");
 const config_1 = require("../utils/config");
 const projectImport_1 = require("../services/projectImport");
+const pathBuilder_1 = require("../services/import/pathBuilder");
 const importProgressEstimator_1 = require("../services/import/importProgressEstimator");
 const s7dclPreviewMirror_1 = require("../utils/s7dclPreviewMirror");
 /**
@@ -241,7 +242,6 @@ async function importDeviceCategoryHwConfigCommand(connectionService, item) {
             logger_1.Logger.info(`Category HW Config import progress estimate: ${(0, importProgressEstimator_1.formatHwConfigProgressEstimate)(progressEstimate)} `
                 + `at ${config.importProgressItemsPerSecond} item(s)/second`);
             const bridge = connectionService.getBridge();
-            const path = await Promise.resolve().then(() => __importStar(require('path')));
             timedProgress.start(`Importing HW Config for ${categoryName} devices...`);
             try {
                 for (const device of devicesInCategory) {
@@ -252,11 +252,10 @@ async function importDeviceCategoryHwConfigCommand(connectionService, item) {
                     const displayName = device.displayName || device.name;
                     timedProgress.setMessage(`Importing HW Config: ${displayName}...`);
                     logger_1.Logger.info(`├─ Importing HW Config: ${displayName}`);
-                    const categoryFolder = (0, projectImport_1.getDeviceCategoryFolder)(device.type);
-                    // IO_Devices: flat layout (XML directly in IO_Devices/). Other categories: per-device DeviceConfiguration subfolder.
-                    const hwConfigPath = categoryFolder === 'IO_Devices'
-                        ? path.join(exportPath, 'Devices', categoryFolder)
-                        : path.join(exportPath, 'Devices', categoryFolder, displayName, 'DeviceConfiguration');
+                    // Build per-device HW Config path, preserving TIA folder structure.
+                    // Root IO devices keep the legacy flat layout; IO devices inside
+                    // TIA folders use a per-device DeviceConfiguration subfolder.
+                    const hwConfigPath = (0, pathBuilder_1.buildDeviceHwConfigPath)(device, exportPath);
                     const result = await bridge.importDeviceHwConfig(device.name, // Use technical device name for API lookup
                     true, // includeChannels
                     true, // includeAddresses

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.detectPlcFolders = exports.detectPlcFolderType = exports.exportXlsxFolderToTiaCommand = exports.exportXlsxToTiaCommand = exports.exportProgramToTiaCommand = exports.exportUnifiedToTiaCommand = exports.exportBlockFolderToTiaCommand = exports.exportXmlFolderToTiaCommand = exports.exportBlockToTiaCommand = exports.exportXmlToTiaCommand = exports.pickOverwriteMode = exports.pickDevice = exports.isPlcDevice = exports.validateProjectPlcDevices = exports.validateProjectDevices = exports.ensureConnection = exports.findProgramBlocksBasePath = exports.detectFolderType = exports.getEmptyFoldersInDirectory = exports.getSupportedFilesInFolder = exports.sortXmlFilesForImport = exports.isKnowHowProtectedPlaceholder = exports.isDependencyError = exports.isAlreadyExistsError = exports.SUPPORTED_EXTENSIONS = void 0;
+exports.detectPlcFolders = exports.detectPlcFolderType = exports.exportXlsxFolderToTiaCommand = exports.exportXlsxToTiaCommand = exports.exportProgramToTiaCommand = exports.exportUnifiedToTiaCommand = exports.exportUnitToTiaCommand = exports.exportBlockFolderToTiaCommand = exports.exportXmlFolderToTiaCommand = exports.exportBlockToTiaCommand = exports.exportXmlToTiaCommand = exports.pickOverwriteMode = exports.pickDevice = exports.isPlcDevice = exports.validateProjectPlcDevices = exports.validateProjectDevices = exports.ensureConnection = exports.findProgramBlocksBasePath = exports.detectFolderType = exports.getEmptyFoldersInDirectory = exports.getSupportedFilesInFolder = exports.sortXmlFilesForImport = exports.isKnowHowProtectedPlaceholder = exports.isDependencyError = exports.isAlreadyExistsError = exports.SUPPORTED_EXTENSIONS = void 0;
 // Export utilities
 var exportUtils_1 = require("./exportUtils");
 Object.defineProperty(exports, "SUPPORTED_EXTENSIONS", { enumerable: true, get: function () { return exportUtils_1.SUPPORTED_EXTENSIONS; } });
@@ -28,6 +28,9 @@ Object.defineProperty(exports, "exportBlockToTiaCommand", { enumerable: true, ge
 var exportFolder_1 = require("./exportFolder");
 Object.defineProperty(exports, "exportXmlFolderToTiaCommand", { enumerable: true, get: function () { return exportFolder_1.exportXmlFolderToTiaCommand; } });
 Object.defineProperty(exports, "exportBlockFolderToTiaCommand", { enumerable: true, get: function () { return exportFolder_1.exportBlockFolderToTiaCommand; } });
+// Export commands - Software Unit
+var exportUnitToTia_1 = require("./exportUnitToTia");
+Object.defineProperty(exports, "exportUnitToTiaCommand", { enumerable: true, get: function () { return exportUnitToTia_1.exportUnitToTiaCommand; } });
 // Export commands - unified (multi-folder PLC export)
 var exportUnified_1 = require("./exportUnified");
 Object.defineProperty(exports, "exportUnifiedToTiaCommand", { enumerable: true, get: function () { return exportUnified_1.exportUnifiedToTiaCommand; } });

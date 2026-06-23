@@ -25,6 +25,28 @@ function ImportToTiaBridgeMixin(Base) {
         async importXmlFolderToTia(deviceId, folderPath, overwriteExisting = true, recursive = true) {
             return this.safeCall('Failed to import XML folder to TIA Portal', 'ImportXmlFolderToTia', { deviceId, folderPath, overwriteExisting, recursive });
         }
+        /**
+         * Import an XML file into a specific Software Unit (PlcUnit / PlcSafetyUnit).
+         * `kind` is optional (`'plc'` or `'safety'`) — used to disambiguate when the
+         * same name exists in both compositions.
+         */
+        async importXmlFileToUnit(deviceId, unitName, kind, xmlFilePath, overwriteExisting = true, basePath, compareBeforeImport = false, createMissingUnit = true) {
+            return this.safeCall('Failed to import XML file into Software Unit', 'ImportXmlFileToUnit', { deviceId, unitName, kind, xmlFilePath, overwriteExisting, basePath, compareBeforeImport, createMissingUnit });
+        }
+        /**
+         * Import a folder of XML / SCL / s7dcl files into a specific Software Unit.
+         */
+        async importXmlFolderToUnit(deviceId, unitName, kind, folderPath, overwriteExisting = true, recursive = true, createMissingUnit = true) {
+            return this.safeCall('Failed to import XML folder into Software Unit', 'ImportXmlFolderToUnit', { deviceId, unitName, kind, folderPath, overwriteExisting, recursive, createMissingUnit });
+        }
+        /**
+         * Import a complete Software Unit from a local workspace folder into TIA Portal.
+         * The folder must contain `_unit.json` and the standard `Program blocks`,
+         * `PLC data types`, `PLC tags` subfolders.
+         */
+        async importUnitToTia(deviceId, unitFolderPath, overwriteExisting = true, compareBeforeImport = false, createMissingUnit = true, deleteOrphans = true) {
+            return this.safeCall('Failed to import Software Unit into TIA Portal', 'ImportUnit', { deviceId, unitFolderPath, overwriteExisting, compareBeforeImport, createMissingUnit, deleteOrphans });
+        }
         async importXlsxFileToTia(deviceId, xlsxFilePath, overwriteExisting = true, compareBeforeImport = false) {
             return this.safeCall('Failed to import XLSX file to TIA Portal', 'ImportXlsxFileToTia', { deviceId, xlsxFilePath, overwriteExisting, compareBeforeImport });
         }
@@ -38,12 +60,12 @@ function ImportToTiaBridgeMixin(Base) {
             return this.safeCall('Failed to create Instance DB in TIA Portal', 'CreateInstanceDB', { deviceId, instanceDbName, instanceOfName, blockNumber, groupPath });
         }
         /** Create block groups in TIA Portal (for empty folders) */
-        async createBlockGroups(deviceId, groupPaths, basePath) {
-            return this.safeCall('Failed to create block groups in TIA Portal', 'CreateBlockGroups', { deviceId, groupPaths, basePath });
+        async createBlockGroups(deviceId, groupPaths, basePath, unitName, kind, createMissingUnit = true) {
+            return this.safeCall('Failed to create block groups in TIA Portal', 'CreateBlockGroups', { deviceId, groupPaths, basePath, unitName, kind, createMissingUnit });
         }
         /** Delete orphaned block groups in TIA Portal (groups that don't exist in local files) */
-        async deleteOrphanedBlockGroups(deviceId, localFolderPath, basePath) {
-            return this.safeCall('Failed to delete orphaned block groups in TIA Portal', 'DeleteOrphanedBlockGroups', { deviceId, localFolderPath, basePath });
+        async deleteOrphanedBlockGroups(deviceId, localFolderPath, basePath, unitName, kind, createMissingUnit = true) {
+            return this.safeCall('Failed to delete orphaned block groups in TIA Portal', 'DeleteOrphanedBlockGroups', { deviceId, localFolderPath, basePath, unitName, kind, createMissingUnit });
         }
         /** Delete orphaned tag tables and groups in TIA Portal */
         async deleteOrphanedTagTables(deviceId, localFolderPath) {

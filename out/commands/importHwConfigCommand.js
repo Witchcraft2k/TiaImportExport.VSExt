@@ -37,7 +37,7 @@ exports.importHwConfigCommand = importHwConfigCommand;
 exports.importDeviceHwConfigCommand = importDeviceHwConfigCommand;
 const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
-const projectImport_1 = require("../services/projectImport");
+const pathBuilder_1 = require("../services/import/pathBuilder");
 const logger_1 = require("../utils/logger");
 const workspace_1 = require("../utils/workspace");
 const config_1 = require("../utils/config");
@@ -100,11 +100,10 @@ async function importHwConfigCommand(connectionService, item) {
                 const device = allDevices[i];
                 const displayName = device.displayName || device.name;
                 const deviceType = device.type || 'Device';
-                const categoryFolder = (0, projectImport_1.getDeviceCategoryFolder)(deviceType);
-                // IO_Devices: flat layout (XML directly in IO_Devices/). Other categories: per-device DeviceConfiguration subfolder.
-                const hwConfigPath = categoryFolder === 'IO_Devices'
-                    ? path.join(exportPath, 'Devices', categoryFolder)
-                    : path.join(exportPath, 'Devices', categoryFolder, displayName, 'DeviceConfiguration');
+                // Build per-device HW Config path, preserving TIA folder structure.
+                // Root IO devices keep the legacy flat layout; IO devices inside
+                // TIA folders use a per-device DeviceConfiguration subfolder.
+                const hwConfigPath = (0, pathBuilder_1.buildDeviceHwConfigPath)(device, exportPath);
                 const progressLabel = `[${i + 1}/${allDevices.length}]`;
                 progress.report({
                     message: `${progressLabel} ${displayName}`,
@@ -199,12 +198,11 @@ async function importDeviceHwConfigCommand(connectionService, item) {
         const deviceId = item.metadata?.technicalName || item.id;
         const displayName = item.label?.toString() || item.id;
         const deviceType = item.metadata?.deviceType || 'Device';
-        // Get device category folder (PLCs, HMIs, or IO_Devices)
-        const categoryFolder = (0, projectImport_1.getDeviceCategoryFolder)(deviceType);
-        // IO_Devices: flat layout (XML directly in IO_Devices/). Other categories: per-device DeviceConfiguration subfolder.
-        const hwConfigPath = categoryFolder === 'IO_Devices'
-            ? path.join(exportPath, 'Devices', categoryFolder)
-            : path.join(exportPath, 'Devices', categoryFolder, displayName, 'DeviceConfiguration');
+        const folderPath = item.metadata?.folderPath;
+        // Build per-device HW Config path, preserving TIA folder structure.
+        // Root IO devices keep the legacy flat layout; IO devices inside
+        // TIA folders use a per-device DeviceConfiguration subfolder.
+        const hwConfigPath = (0, pathBuilder_1.buildDeviceHwConfigPath)({ displayName, name: deviceId, type: deviceType, folderPath }, exportPath);
         logger_1.Logger.section(`IMPORT DEVICE HW CONFIG: ${displayName}`);
         logger_1.Logger.info(`Device ID: ${deviceId}`);
         logger_1.Logger.info(`Export path: ${hwConfigPath}`);

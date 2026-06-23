@@ -37,6 +37,7 @@ exports.TagTableImportService = void 0;
 const path = __importStar(require("path"));
 const logger_1 = require("../../utils/logger");
 const config_1 = require("../../utils/config");
+const unitScope_1 = require("../../utils/unitScope");
 /**
  * Service responsible for importing tag tables from TIA Portal to XML
  */
@@ -92,7 +93,7 @@ class TagTableImportService {
     /**
      * Import tag tables from a specific group with path preservation
      */
-    async importTagTablesFromGroup(parentPath, groupName, groupPath, exportPath) {
+    async importTagTablesFromGroup(parentPath, groupName, groupPath, exportPath, groupId) {
         const project = this._connectionService.currentProject;
         if (!project) {
             return {
@@ -113,11 +114,11 @@ class TagTableImportService {
                     error: 'Could not find device/PLC path'
                 };
             }
-            // Add PLC tags subfolder with group path
-            const tagsPath = path.join(devicePlcPath, 'PLC tags');
+            // Add PLC tags subfolder with group path (route into Units/<UnitName>/ when groupId carries a unit segment)
+            const tagsPath = (0, unitScope_1.resolveExportRoot)(devicePlcPath, groupId, 'PLC tags');
             const generateXlsx = (0, config_1.getConfig)().tagTableFormat === 'xlsx';
             logger_1.Logger.info(`PLC tags format: ${generateXlsx ? 'xlsx' : 'xml'}`);
-            const result = await this._bridge.exportTagTablesFromGroup(project.name, deviceId, plcId, groupName, groupPath, tagsPath, generateXlsx);
+            const result = await this._bridge.exportTagTablesFromGroup(project.name, deviceId, plcId, groupName, groupPath, tagsPath, generateXlsx, groupId);
             return result;
         }
         catch (error) {
@@ -153,8 +154,8 @@ class TagTableImportService {
                     error: 'Could not find device/PLC path'
                 };
             }
-            // Add PLC tags subfolder
-            const tagsPath = path.join(devicePlcPath, 'PLC tags');
+            // Add PLC tags subfolder (route into Units/<UnitName>/ when tagTableId carries a unit segment)
+            const tagsPath = (0, unitScope_1.resolveExportRoot)(devicePlcPath, tagTableId, 'PLC tags');
             const generateXlsx = (0, config_1.getConfig)().tagTableFormat === 'xlsx';
             logger_1.Logger.info(`PLC tags format: ${generateXlsx ? 'xlsx' : 'xml'}`);
             const result = await this._bridge.exportSingleTagTable(project.name, deviceId, plcId, tagTableId, tagsPath, generateXlsx);

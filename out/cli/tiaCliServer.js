@@ -59,6 +59,9 @@ const COMMANDS = [
     'export_block',
     'export_device',
     'export_hw_config',
+    'list_units',
+    'export_units',
+    'export_unit',
     'export_project',
     'import_file',
     'import_folder',
@@ -225,6 +228,15 @@ async function dispatch(api, command, args) {
         case 'export_device':
         case 'tia_export_device':
             return api.exportDevice(requiredString(args.device, 'device'));
+        case 'list_units':
+        case 'tia_list_units':
+            return api.listUnits(requiredString(args.device, 'device'));
+        case 'export_units':
+        case 'tia_export_units':
+            return api.exportUnits(requiredString(args.device, 'device'));
+        case 'export_unit':
+        case 'tia_export_unit':
+            return api.exportUnit(requiredString(args.device, 'device'), requiredString(args.unitName ?? args.unit, 'unitName'), optionalUnitKind(args.kind));
         case 'export_hw_config':
         case 'tia_export_hw_config':
             return api.exportHwConfig(optionalString(args.device), {
@@ -246,13 +258,17 @@ async function dispatch(api, command, args) {
         case 'tia_import_file':
             return api.importFile(requiredString(args.device, 'device'), requiredString(args.filePath, 'filePath'), {
                 overwriteExisting: optionalBoolean(args.overwriteExisting),
-                compareBeforeImport: optionalBoolean(args.compareBeforeImport)
+                compareBeforeImport: optionalBoolean(args.compareBeforeImport),
+                unitName: optionalString(args.unitName ?? args.unit),
+                unitKind: optionalUnitKind(args.unitKind ?? args.kind)
             });
         case 'import_folder':
         case 'tia_import_folder':
             return api.importFolder(requiredString(args.device, 'device'), requiredString(args.folderPath, 'folderPath'), {
                 overwriteExisting: optionalBoolean(args.overwriteExisting),
-                recursive: optionalBoolean(args.recursive)
+                recursive: optionalBoolean(args.recursive),
+                unitName: optionalString(args.unitName ?? args.unit),
+                unitKind: optionalUnitKind(args.unitKind ?? args.kind)
             });
         case 'import_hw_config':
         case 'tia_import_hw_config':
@@ -414,5 +430,15 @@ function optionalLogLevel(value) {
 }
 function optionalHwFormat(value) {
     return value === 'xml' || value === 'cax' ? value : undefined;
+}
+function optionalUnitKind(value) {
+    if (typeof value !== 'string')
+        return undefined;
+    const v = value.trim().toLowerCase();
+    if (v === 'plc' || v === 'standard' || v === 'normal')
+        return 'plc';
+    if (v === 'safety' || v === 'safe' || v === 'f' || v === 'fail-safe')
+        return 'safety';
+    return undefined;
 }
 //# sourceMappingURL=tiaCliServer.js.map

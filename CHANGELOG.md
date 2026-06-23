@@ -6,6 +6,71 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) and 
 
 ---
 
+## [3.0.57] - 2026-06-23 — fork sync + Project Server fix (V19 + V21)
+
+### Changed
+
+- **Synchronized JS bundle with upstream 3.0.57** — `out/` (the compiled extension layer), `package.json`
+  (`version` → 3.0.57, +2 commands, +4 Language Model tools, +activation events), `README.md` and the new
+  `scripts/refactor-unit-scope.ps1` are aligned with the author's published 3.0.57 build. `changelog.md`
+  carries the upstream `## [3.0.46]` and `## [3.0.56]` entries above the fork's own blocks.
+
+### Fixed
+
+- **Project Server / multiuser `Tia Connect` fix now covers BOTH V19 and V21** (corrected from the prior
+  "V19 works without the fix" note — that was a misread: V19 connect without the fix returns
+  **"No projects found"** against a Project Server). The fix lives in the shared .NET wrapper C# source
+  (`TiaConnector.cs`, `TiaPortalService.cs`, `ConnectionMethodsHandler.cs`, `TiaConnectionManager.cs`
+  with `using Siemens.Engineering.Multiuser;`). The V21 DLL was already rebuilt with the fix; the V19 DLL
+  is now **also rebuilt with the fix** via a targeted build (`dotnet build /p:OpennessTiaMajor=19`),
+  because V19's flat `PublicAPI\V19\` layout (no `net48` subfolder) is wrongly skipped by
+  `scripts/build-dotnet.js` (which also cleans `bin/Release/net48/` first — never use it for a single
+  version). User-verified 2026-06-23 against a Project Server on installed `3.0.57`.
+
+### Known Limitations
+
+- **Software Unit LM tools are not implemented in the wrapper** — the synced 3.0.57 `out/` calls six
+  `.NET` methods the fork wrapper does not yet register: `ListUnits`, `ExportUnit`, `ExportUnits`,
+  `ImportUnit`, `ImportXmlFileToUnit`, `ImportXmlFolderToUnit`. Consequently `npm run test:method-parity`
+  reports these as **Missing in C# router (6)** at this revision. At runtime the affected Copilot tools
+  (`tia_list_units`, `tia_export_unit`, `tia_export_units`, `tia_import_unit`, and the `...ToUnit`
+  variants of `tia_import_file`/`tia_import_folder`) return `{"success":false,
+  "error":"Unknown method: <M>"}` — a clean error, not a crash. All other 45 routed methods (connect,
+  list/select project, compile, export/import, Project Server loading) work. Implementing the Software
+  Unit handlers in the shared C# source (preserving the Project Server fix) is the follow-up task; see
+  [.github/skills/tia-fork-sync/SKILL.md](.github/skills/tia-fork-sync/SKILL.md) § "Advanced".
+- **V18 / V20 — NOT INSTALLED, unverifiable.** TIA Portal V18's folder is absent; V20's folder is a stub
+  (only `Lib/`, no `tiaap.exe`, no `PublicAPI`). Their wrapper DLLs are stale author binaries and cannot
+  be tested. Use **V19 or V21** for Project Server connect.
+
+---
+
+## [3.0.56] - 2026-06-22
+
+### Fixed
+
+- **HW Config export path for devices inside TIA Portal folders** — importing hardware configuration for PLCs, HMIs and IO devices placed in TIA Portal device folders now writes files to the correct mirrored workspace path: `Devices/<Category>/<FolderPath>/<Device>/DeviceConfiguration`. Previously foldered PLCs landed directly under `Devices/<Category>/<Device>/DeviceConfiguration` because the TypeScript callers ignored `folderPath`.
+- **TIA folder structure for IO devices** — IO devices inside TIA Portal folders are now exported with their folder hierarchy preserved (`Devices/IO_Devices/<FolderPath>/<Device>/DeviceConfiguration`) instead of being flattened into `Devices/IO_Devices/`. Root IO devices still use the legacy flat layout for backward compatibility.
+
+### Changed
+
+- **Unified HW Config path builder** — all HW Config import callers now use the shared `buildDeviceHwConfigPath` helper, which centralizes the decision between legacy flat IO layout and per-device folder-mirrored layout.
+
+## [3.0.46] - 2026-06-22
+
+### Added
+
+- **Export complete Software Unit to TIA Portal** — right-click a `Units/<UnitName>/` folder in VS Code Explorer and choose **Export Software Unit to TIA Portal** to push the entire unit back to TIA Portal V18+. The command reads `_unit.json`, creates the Software Unit if it does not exist, applies metadata (`author`, `comment`, `namespacePreset`), imports `Program blocks`, `PLC data types` and `PLC tags`, and cleans up orphaned items that no longer exist locally.
+- **Software Unit export Copilot tool** — new Language Model Tool `tia_import_unit` lets Copilot push a complete Software Unit folder into TIA Portal in one call. The folder path is optional and auto-detected when the workspace contains a single unit export.
+
+### Fixed
+
+- **CLI Bridge toggle respects workspace settings** — `TIA Import: Toggle CLI Bridge` now flips `tiaImport.cli.enabled` at the same configuration level where it is currently defined (workspace or global), so the On/Off state in the Connection panel updates correctly even when the setting is overridden in workspace settings.
+- **ACT preview mirror for Software Units** — importing Software Units with `tiaImport.exportFormat` set to `sd` now writes the parallel XML preview mirror into `Units/<UnitName>/.tiaPreview/Program blocks/...` instead of the device-level `.tiaPreview` folder. `findPreviewXmlForS7dcl` resolves unit paths correctly so the Automation Compare Tool can open LAD/FBD block previews inside Software Units. Fixed a bridge issue where the `s7dclPreviewXmlEnabled` flag was not passed to the .NET export call.
+- **Software Unit tag table format** — `tiaImport.tagTableFormat` is now honored when exporting Software Units. When set to `xlsx`, tag tables inside `Units/<UnitName>/PLC tags/` are exported as `.xlsx` (XML sources are removed), matching the behavior for device-level tag tables.
+- **Devices inside TIA Portal folders** — PLC/HMI/IO devices placed inside device folders are now discovered, displayed in the Project Structure tree under their folder path, and can be imported/exported. Device exports on disk follow the folder hierarchy: `Devices/<Category>/<FolderPath>/<Device>`. `FindDevice` resolves devices regardless of whether they are at the project root or inside a `DeviceGroup`.
+- **Per-device HW Config for foldered PLCs** — `ImportDeviceHwConfig` now uses the shared `IDeviceLocator`, so it can resolve PLCs inside `DeviceGroups`. It also exports only the selected device instead of falling back to a project-wide HW Config export.
+
 ## [3.0.12] - 2026-06-18
 
 ### Changed

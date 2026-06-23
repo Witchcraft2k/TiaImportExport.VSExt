@@ -34,6 +34,8 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getDeviceCategoryFolder = getDeviceCategoryFolder;
+exports.buildDeviceFolderPath = buildDeviceFolderPath;
+exports.buildDeviceHwConfigPath = buildDeviceHwConfigPath;
 exports.buildDevicePlcPath = buildDevicePlcPath;
 exports.buildDeviceHmiPath = buildDeviceHmiPath;
 const path = __importStar(require("path"));
@@ -56,6 +58,35 @@ function getDeviceCategoryFolder(deviceType) {
     }
 }
 /**
+ * Build the base device folder under `exportPath`, preserving any TIA Portal
+ * folder structure: `Devices/<Category>/<FolderPath>/<Device>`.
+ */
+function buildDeviceFolderPath(device, exportPath) {
+    const deviceFolderName = device.displayName || device.name;
+    const categoryFolder = getDeviceCategoryFolder(device.type);
+    const segments = ['Devices', categoryFolder];
+    if (device.folderPath) {
+        segments.push(...device.folderPath.split('/'));
+    }
+    segments.push(deviceFolderName);
+    return path.join(exportPath, ...segments);
+}
+/**
+ * Build the HW Config export folder for a device.
+ *
+ * Root IO devices keep the legacy flat layout (`Devices/IO_Devices/`), while
+ * devices inside TIA folders (including IO devices in folders) are placed in a
+ * per-device `DeviceConfiguration` folder that mirrors the TIA folder structure:
+ * `Devices/<Category>/<FolderPath>/<Device>/DeviceConfiguration`.
+ */
+function buildDeviceHwConfigPath(device, exportPath) {
+    const categoryFolder = getDeviceCategoryFolder(device.type);
+    if (categoryFolder === 'IO_Devices' && !device.folderPath) {
+        return path.join(exportPath, 'Devices', categoryFolder);
+    }
+    return path.join(buildDeviceFolderPath(device, exportPath), 'DeviceConfiguration');
+}
+/**
  * Build the PLC folder for a device within `exportPath`.
  *
  * Expected `parentPath` format: `deviceId/plcName`. Returns `undefined` when
@@ -76,12 +107,11 @@ function buildDevicePlcPath(connectionService, parentPath, exportPath) {
     if (!plc) {
         return undefined;
     }
-    const deviceFolderName = device.displayName || device.name;
-    const categoryFolder = getDeviceCategoryFolder(device.type);
+    const deviceFolder = buildDeviceFolderPath(device, exportPath);
     if (device.plcSoftware.length > 1) {
-        return path.join(exportPath, 'Devices', categoryFolder, deviceFolderName, plc.name);
+        return path.join(deviceFolder, plc.name);
     }
-    return path.join(exportPath, 'Devices', categoryFolder, deviceFolderName);
+    return deviceFolder;
 }
 /**
  * Build the HMI folder for a device within `exportPath`.
@@ -96,8 +126,6 @@ function buildDeviceHmiPath(connectionService, deviceId, exportPath) {
     if (!device) {
         return undefined;
     }
-    const deviceFolderName = device.displayName || device.name;
-    const categoryFolder = getDeviceCategoryFolder(device.type);
-    return path.join(exportPath, 'Devices', categoryFolder, deviceFolderName);
+    return buildDeviceFolderPath(device, exportPath);
 }
 //# sourceMappingURL=pathBuilder.js.map

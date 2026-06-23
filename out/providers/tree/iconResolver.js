@@ -47,6 +47,8 @@ function resolveIcon(contextValue, metadata) {
         case 'deviceCategory':
         case 'deviceCategoryHwOnly':
             return resolveDeviceCategoryIcon(metadata);
+        case 'deviceFolder':
+            return new vscode.ThemeIcon('folder');
         case 'device':
         case 'deviceWithPlc':
         case 'deviceHwOnly':

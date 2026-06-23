@@ -76,6 +76,14 @@ class ProjectImportService {
         this._hmiImportService = new hmiImportService_1.HmiImportService(connectionService, this._bridge, buildHmiPath);
     }
     /**
+     * Get the underlying bridge (read-only). Used by API surfaces (TiaApi)
+     * that need to invoke bridge methods directly without re-creating an
+     * instance.
+     */
+    get bridge() {
+        return this._bridge;
+    }
+    /**
      * Get the current project name
      */
     getCurrentProjectName() {
@@ -257,7 +265,7 @@ class ProjectImportService {
             }
             // Get device category folder (PLCs, HMIs, or IO_Devices)
             const categoryFolder = (0, pathBuilder_1.getDeviceCategoryFolder)(device.type);
-            const devicePath = path.join(exportPath, 'Devices', categoryFolder, deviceFolderName);
+            const devicePath = (0, pathBuilder_1.buildDeviceFolderPath)(device, exportPath);
             if (categoryFolder !== 'IO_Devices' || device.plcSoftware.length > 0) {
                 await fs.promises.mkdir(devicePath, { recursive: true });
             }
@@ -444,8 +452,8 @@ class ProjectImportService {
     /**
      * Import tag tables from a specific group with path preservation
      */
-    async importTagTablesFromGroup(parentPath, groupName, groupPath, exportPath) {
-        return this._tagTableImportService.importTagTablesFromGroup(parentPath, groupName, groupPath, exportPath);
+    async importTagTablesFromGroup(parentPath, groupName, groupPath, exportPath, groupId) {
+        return this._tagTableImportService.importTagTablesFromGroup(parentPath, groupName, groupPath, exportPath, groupId);
     }
     /**
      * Import a single tag table
@@ -463,8 +471,8 @@ class ProjectImportService {
     /**
      * Import UDTs from a specific group with path preservation
      */
-    async importUdtsFromGroup(parentPath, groupName, groupPath, exportPath) {
-        return this._udtImportService.importUdtsFromGroup(parentPath, groupName, groupPath, exportPath);
+    async importUdtsFromGroup(parentPath, groupName, groupPath, exportPath, groupId) {
+        return this._udtImportService.importUdtsFromGroup(parentPath, groupName, groupPath, exportPath, groupId);
     }
     /**
      * Import a single UDT
@@ -658,6 +666,35 @@ class ProjectImportService {
         }
         else {
             logger_1.Logger.error(`  ✗ Failed to import watch tables: ${watchResult.error}`);
+        }
+        // Export Software Units (V18+). Units have their own block/UDT/tag groups
+        // and land in `<plcPath>/Units/<unitName>/`. Older runtimes return
+        // {success:true, supported:false} which we silently skip.
+        if (cancellationToken?.isCancellationRequested) {
+            logger_1.Logger.warn('Import cancelled by user after watch tables');
+            return { itemCount: successCount + skippedCount + deletedCount + errorCount, updatedCount: successCount, unchangedCount: skippedCount, deletedCount, messages: allMessages, cancelled: true };
+        }
+        progress?.(`Importing Software Units from ${plcName}...`);
+        logger_1.Logger.info(`Checking Software Units in ${plcName}...`);
+        const unitsResult = await this._bridge.exportUnits(deviceId, plcPath, {
+            includeComments: config.includeComments,
+            excludeSystemBlocks: config.excludeSystemBlocks,
+            format: config.exportFormat,
+            dbExportFormat: config.dbExportFormat,
+            s7dclPreviewXmlEnabled: (0, s7dclPreviewMirror_1.isS7dclPreviewMirrorEnabled)(),
+            generateXlsx: config.tagTableFormat === 'xlsx'
+        });
+        if (unitsResult.success) {
+            if (unitsResult.supported === false) {
+                logger_1.Logger.info('  ℹ Software Units not supported on this TIA Portal runtime');
+            }
+            else if (unitsResult.messages) {
+                allMessages.push(...unitsResult.messages);
+                logMessagesRealTime(unitsResult.messages, 'Units');
+            }
+        }
+        else {
+            logger_1.Logger.error(`  ✗ Failed to export Software Units: ${unitsResult.error}`);
         }
         // Log summary
         const totalItemCount = successCount + skippedCount + deletedCount + errorCount;

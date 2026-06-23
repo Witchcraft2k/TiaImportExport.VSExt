@@ -36,6 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.UdtImportService = void 0;
 const path = __importStar(require("path"));
 const logger_1 = require("../../utils/logger");
+const unitScope_1 = require("../../utils/unitScope");
 /**
  * Service responsible for importing UDTs (User Data Types) from TIA Portal to XML
  */
@@ -89,7 +90,7 @@ class UdtImportService {
     /**
      * Import UDTs from a specific group with path preservation
      */
-    async importUdtsFromGroup(parentPath, groupName, groupPath, exportPath) {
+    async importUdtsFromGroup(parentPath, groupName, groupPath, exportPath, groupId) {
         const project = this._connectionService.currentProject;
         if (!project) {
             return {
@@ -110,9 +111,9 @@ class UdtImportService {
                     error: 'Could not find device/PLC path'
                 };
             }
-            // Add PLC data types subfolder with group path
-            const udtPath = path.join(devicePlcPath, 'PLC data types');
-            const result = await this._bridge.exportUdtsFromGroup(project.name, deviceId, plcId, groupName, groupPath, udtPath);
+            // Add PLC data types subfolder with group path (route into Units/<UnitName>/ when groupId carries a unit segment)
+            const udtPath = (0, unitScope_1.resolveExportRoot)(devicePlcPath, groupId, 'PLC data types');
+            const result = await this._bridge.exportUdtsFromGroup(project.name, deviceId, plcId, groupName, groupPath, udtPath, groupId);
             return result;
         }
         catch (error) {
@@ -148,8 +149,8 @@ class UdtImportService {
                     error: 'Could not find device/PLC path'
                 };
             }
-            // Add PLC data types subfolder
-            const udtPath = path.join(devicePlcPath, 'PLC data types');
+            // Add PLC data types subfolder (route into Units/<UnitName>/ when udtId carries a unit segment)
+            const udtPath = (0, unitScope_1.resolveExportRoot)(devicePlcPath, udtId, 'PLC data types');
             const result = await this._bridge.exportSingleUdt(project.name, deviceId, plcId, udtId, udtPath);
             return result;
         }

@@ -11,8 +11,8 @@ function PlcDataBridgeMixin(Base) {
         async exportTagTables(projectName, deviceId, plcId, exportPath, generateXlsx = false) {
             return this.safeCall('Failed to import tag tables', 'ExportTagTables', { projectName, deviceId, plcId, exportPath, generateXlsx });
         }
-        async exportTagTablesFromGroup(projectName, deviceId, plcId, groupName, groupPath, exportPath, generateXlsx = false) {
-            return this.safeCall('Failed to import tag tables from group', 'ExportTagTablesFromGroup', { projectName, deviceId, plcId, groupName, groupPath, exportPath, generateXlsx });
+        async exportTagTablesFromGroup(projectName, deviceId, plcId, groupName, groupPath, exportPath, generateXlsx = false, groupId) {
+            return this.safeCall('Failed to import tag tables from group', 'ExportTagTablesFromGroup', { projectName, deviceId, plcId, groupName, groupPath, exportPath, generateXlsx, groupId });
         }
         async exportSingleTagTable(projectName, deviceId, plcId, tagTableId, exportPath, generateXlsx = false) {
             return this.safeCall('Failed to import tag table', 'ExportSingleTagTable', { projectName, deviceId, plcId, tagTableId, exportPath, generateXlsx });
@@ -21,8 +21,8 @@ function PlcDataBridgeMixin(Base) {
         async exportUserDataTypes(projectName, deviceId, plcId, exportPath) {
             return this.safeCall('Failed to import UDTs', 'ExportUserDataTypes', { projectName, deviceId, plcId, exportPath });
         }
-        async exportUdtsFromGroup(projectName, deviceId, plcId, groupName, groupPath, exportPath) {
-            return this.safeCall('Failed to import UDTs from group', 'ExportUdtsFromGroup', { projectName, deviceId, plcId, groupName, groupPath, exportPath });
+        async exportUdtsFromGroup(projectName, deviceId, plcId, groupName, groupPath, exportPath, groupId) {
+            return this.safeCall('Failed to import UDTs from group', 'ExportUdtsFromGroup', { projectName, deviceId, plcId, groupName, groupPath, exportPath, groupId });
         }
         async exportSingleUdt(projectName, deviceId, plcId, udtId, exportPath) {
             return this.safeCall('Failed to import UDT', 'ExportSingleUdt', { projectName, deviceId, plcId, udtId, exportPath });
